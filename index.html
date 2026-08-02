@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0b5f6e">
+<title>Test de Marcha 6 Minutos</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="app-bar no-print" id="app-bar">
+  <button id="btn-back" class="icon-btn" aria-label="Volver" hidden>&#8592;</button>
+  <h1 id="app-bar-title">Test de Marcha 6&#8217;</h1>
+  <button id="btn-settings" class="icon-btn" aria-label="Ajustes">&#9881;&#65039;</button>
+</header>
+
+<main id="app-main">
+
+  <section id="view-home" class="view">
+    <div class="home-actions">
+      <button id="btn-new-test" class="btn btn-primary btn-block btn-lg">+ Nuevo test</button>
+    </div>
+    <div class="search-box">
+      <input type="search" id="home-search" placeholder="Buscar paciente...">
+    </div>
+    <ul id="home-list" class="test-list"></ul>
+    <p id="home-empty" class="empty-state" hidden>Todav&iacute;a no hay tests guardados. Toc&aacute; &laquo;Nuevo test&raquo; para empezar.</p>
+  </section>
+
+  <section id="view-patient" class="view">
+    <h2>Datos del paciente</h2>
+    <form id="patient-form" class="form" novalidate>
+      <label>Fecha
+        <input type="date" id="p-fecha" required>
+      </label>
+      <label>Paciente
+        <input type="text" id="p-nombre" required placeholder="Nombre y apellido" autocomplete="off">
+      </label>
+      <div class="field-row">
+        <label>Edad
+          <input type="number" id="p-edad" min="1" max="120" inputmode="numeric" required>
+        </label>
+        <label>Sexo
+          <div class="segmented" id="p-sexo"></div>
+        </label>
+      </div>
+      <div class="field-row">
+        <label>Peso (kg)
+          <input type="number" id="p-peso" step="0.1" min="1" inputmode="decimal" required>
+        </label>
+        <label>Talla (cm)
+          <input type="number" id="p-talla" step="1" min="50" inputmode="numeric" required>
+        </label>
+      </div>
+      <p class="hint" id="p-bmi-hint">BMI: &mdash;</p>
+      <label>Diagn&oacute;stico
+        <input type="text" id="p-diagnostico" placeholder="Opcional" autocomplete="off">
+      </label>
+      <label>T&eacute;cnico
+        <input type="text" id="p-tecnico" autocomplete="off">
+      </label>
+
+      <h3>Antes de empezar</h3>
+      <label>TA inicial
+        <input type="text" id="p-ta-inicial" placeholder="ej: 120/80" autocomplete="off">
+      </label>
+
+      <div class="basal-block">
+        <p class="section-label">Basal (antes de caminar)</p>
+        <div id="p-ble-hint" class="ble-hint" hidden></div>
+        <div id="p-basal-fields"></div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg">Iniciar prueba &#9654;</button>
+    </form>
+  </section>
+
+  <section id="view-test" class="view">
+    <div class="timer-block">
+      <div id="test-timer" class="timer-display">00:00</div>
+      <div class="timer-controls">
+        <button id="btn-test-pause" class="btn btn-secondary">Pausar</button>
+        <button id="btn-test-finish" class="btn btn-warning">Finalizar caminata</button>
+      </div>
+    </div>
+    <div id="test-ble-badge" class="ble-badge" hidden></div>
+    <button id="btn-lap" class="btn btn-primary btn-lg btn-block lap-btn">Vuelta &nbsp;(+<span id="lap-meters">15</span>&nbsp;m)</button>
+    <p class="meters-total">Metros: <strong id="test-meters-total">0</strong> m &middot; Vueltas: <span id="lap-count">0</span></p>
+
+    <div id="test-rows" class="minute-list"></div>
+  </section>
+
+  <section id="view-recovery" class="view">
+    <h2>Recuperaci&oacute;n</h2>
+    <div class="timer-block">
+      <div id="recovery-timer" class="timer-display">00:00</div>
+    </div>
+
+    <div class="card" id="recovery-fc1-card">
+      <label>FC al minuto de finalizar
+        <input type="number" id="r-fc-1min" inputmode="numeric" placeholder="lpm">
+      </label>
+      <div id="r-ble-hint" class="ble-hint" hidden></div>
+    </div>
+
+    <div class="card">
+      <p class="section-label">Saturaci&oacute;n</p>
+      <div id="recovery-sat-status" class="status-text">Sin marcar</div>
+      <button id="btn-sat-recovered" class="btn btn-secondary btn-block">Marcar saturaci&oacute;n recuperada</button>
+    </div>
+
+    <div class="card">
+      <p class="section-label">Frecuencia card&iacute;aca</p>
+      <div id="recovery-fc-status" class="status-text">Sin marcar</div>
+      <button id="btn-fc-recovered" class="btn btn-secondary btn-block">Marcar FC recuperada</button>
+    </div>
+
+    <label>TA final
+      <input type="text" id="r-ta-final" placeholder="ej: 120/80" autocomplete="off">
+    </label>
+
+    <button id="btn-recovery-finish" class="btn btn-primary btn-block btn-lg">Continuar a revisi&oacute;n &#9654;</button>
+  </section>
+
+  <section id="view-review" class="view">
+    <h2>Revisar antes de generar el informe</h2>
+    <p class="hint">Corregi lo que haga falta: nada se guarda hasta que confirmes el informe.</p>
+    <div id="review-content"></div>
+    <button id="btn-review-generate" class="btn btn-primary btn-block btn-lg">Generar informe &#9654;</button>
+  </section>
+
+  <section id="view-report" class="view">
+    <div class="no-print report-toolbar">
+      <button id="btn-report-edit" class="btn btn-secondary">&#9998; Editar datos</button>
+      <button id="btn-report-save" class="btn btn-secondary">&#128190; Guardar</button>
+      <button id="btn-report-print" class="btn btn-primary">&#128424;&#65039; Imprimir / PDF</button>
+    </div>
+    <article id="report-sheet" class="report-sheet"></article>
+  </section>
+
+  <section id="view-settings" class="view">
+    <h2>Ajustes</h2>
+    <form id="settings-form" class="form">
+      <label>M&eacute;dico
+        <input type="text" id="s-medico">
+      </label>
+      <label>Matr&iacute;cula
+        <input type="text" id="s-matricula">
+      </label>
+      <label>Especialidad
+        <input type="text" id="s-especialidad">
+      </label>
+      <label>T&eacute;cnico por defecto
+        <input type="text" id="s-tecnico">
+      </label>
+      <label>Metros por vuelta
+        <input type="number" id="s-metros-vuelta" min="1" step="0.5">
+      </label>
+      <button type="submit" class="btn btn-primary btn-block">Guardar ajustes</button>
+    </form>
+    <hr>
+    <div class="settings-ble">
+      <p class="section-label">Ox&iacute;metro Bluetooth</p>
+      <p class="hint">Conexi&oacute;n directa y experimental al sensor (no pasa por la app ViHealth, eso no es posible entre apps). Solo funciona si tu ox&iacute;metro implementa el perfil Bluetooth est&aacute;ndar de oximetr&iacute;a &mdash; muchos ox&iacute;metros econ&oacute;micos usan un protocolo propio y en ese caso no va a poder conectar. La carga manual funciona siempre, se use o no el Bluetooth.</p>
+      <div id="ble-status" class="status-text">Verificando compatibilidad&hellip;</div>
+      <button id="btn-ble-connect" class="btn btn-secondary btn-block">Conectar ox&iacute;metro</button>
+      <button id="btn-ble-disconnect" class="btn btn-danger btn-block" hidden>Desconectar</button>
+    </div>
+    <hr>
+    <div class="settings-backup">
+      <p class="section-label">Copia de seguridad</p>
+      <p class="hint">Los datos viven solo en este celular. Export&aacute; una copia de tanto en tanto por si se resetea el tel&eacute;fono.</p>
+      <button id="btn-export" class="btn btn-secondary btn-block">Exportar copia (JSON)</button>
+      <label class="btn btn-secondary btn-block file-btn" for="input-import">Importar copia
+        <input type="file" id="input-import" accept="application/json" hidden>
+      </label>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="js/storage.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/ble.js"></script>
+<script src="js/home.js"></script>
+<script src="js/patient.js"></script>
+<script src="js/test.js"></script>
+<script src="js/recovery.js"></script>
+<script src="js/review.js"></script>
+<script src="js/report.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
