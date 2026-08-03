@@ -113,7 +113,7 @@ TM6M.google = (function () {
       '',
       pdfBase64,
       '--' + boundary + '--'
-    ];
+    ]);
     return lines.join('\r\n');
   }
 
