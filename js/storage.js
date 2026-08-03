@@ -136,6 +136,7 @@ TM6M.model = (function () {
       filas: filas,
       vueltas: [],
       paradas: [],
+      terminoAnticipado: null,
       startedAt: null,
       recuperacion: { fcAlMinuto: null, recuperaFcEnMin: null, recuperaSatEnMin: null },
       oxigeno: { suplementario: false, detalle: '' },

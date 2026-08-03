@@ -12,6 +12,7 @@ TM6M.review = (function () {
     for (var i = 0; i <= 6; i++) root.appendChild(filaCard(t, i));
     root.appendChild(postCard(t));
     if (t.paradas && t.paradas.length) root.appendChild(paradasCard(t));
+    if (t.terminoAnticipado) root.appendChild(terminoCard(t));
     root.appendChild(oxigenoCard(t));
     root.appendChild(notesCard(t));
   }
@@ -116,7 +117,7 @@ TM6M.review = (function () {
         row.appendChild(title);
         var box = document.createElement('div');
         box.appendChild(TM6M.ui.fieldBlock('SpO2 %', function (b) {
-          TM6M.ui.buildSpo2Field(b, p.spo2 === undefined ? null : p.spo2, function (v) { p.spo2 = v; });
+          TM6M.ui.buildNumberInput(b, p.spo2 === undefined ? null : p.spo2, function (v) { p.spo2 = v; }, { placeholder: '%' });
         }));
         box.appendChild(TM6M.ui.fieldBlock('FC (lpm)', function (b) {
           TM6M.ui.buildNumberInput(b, p.fc === undefined ? null : p.fc, function (v) { p.fc = v; });
@@ -130,6 +131,30 @@ TM6M.review = (function () {
         row.appendChild(box);
         c.appendChild(row);
       });
+    });
+  }
+
+  function terminoCard(t) {
+    return card('Finalización antes de tiempo', function (c) {
+      var d = t.terminoAnticipado;
+      var title = document.createElement('p');
+      title.className = 'sub-label';
+      title.textContent = 'Se detuvo en el minuto ' + TM6M.calc.fmtMinSec(d.sec);
+      c.appendChild(title);
+      var box = document.createElement('div');
+      box.appendChild(TM6M.ui.fieldBlock('SpO2 %', function (b) {
+        TM6M.ui.buildNumberInput(b, d.spo2, function (v) { d.spo2 = v; }, { placeholder: '%' });
+      }));
+      box.appendChild(TM6M.ui.fieldBlock('FC (lpm)', function (b) {
+        TM6M.ui.buildNumberInput(b, d.fc, function (v) { d.fc = v; });
+      }));
+      box.appendChild(TM6M.ui.fieldBlock('Borg disnea', function (b) {
+        TM6M.ui.buildBorgSelector(b, d.borgDisnea, function (v) { d.borgDisnea = v; });
+      }));
+      box.appendChild(TM6M.ui.fieldBlock('Borg MMII', function (b) {
+        TM6M.ui.buildBorgSelector(b, d.borgMmii, function (v) { d.borgMmii = v; });
+      }));
+      c.appendChild(box);
     });
   }
 

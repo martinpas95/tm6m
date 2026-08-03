@@ -7,9 +7,9 @@ TM6M.test = (function () {
   var timerInterval = null;
   var notifiedBoundary = {};
   var openRow = null;
-  var openRowCtrl = null;
   var manualMetros = {};
   var detenido = false;
+  var pendingEarlyFinish = null;
 
   function getElapsedMs() { return Date.now() - startedAt; }
 
@@ -17,11 +17,12 @@ TM6M.test = (function () {
     var t = TM6M.state.current;
     t.vueltas = [];
     t.paradas = [];
+    t.terminoAnticipado = null;
     manualMetros = {};
     openRow = null;
-    openRowCtrl = null;
     notifiedBoundary = {};
     detenido = false;
+    pendingEarlyFinish = null;
     startedAt = Date.now();
     t.startedAt = new Date(startedAt).toISOString();
 
@@ -34,6 +35,7 @@ TM6M.test = (function () {
       return confirm('¿Salir de la prueba en curso? El cronómetro se detendrá.');
     });
 
+    recomputeMetros();
     render();
     TM6M.ui.showView('test');
     tick();
@@ -46,19 +48,32 @@ TM6M.test = (function () {
     t.vueltas.push(sec);
     recomputeMetros();
     updateMetersUI();
+    updateDirectionBox();
     renderRows();
     TM6M.ui.vibrate(30);
   }
 
-  function recomputeMetros() {
+  function lapCountsByMinute() {
     var t = TM6M.state.current;
     var counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
     t.vueltas.forEach(function (sec) {
       var m = Math.min(6, Math.floor(sec / 60) + 1);
       counts[m] = (counts[m] || 0) + 1;
     });
+    return counts;
+  }
+
+  function recomputeMetros() {
+    var t = TM6M.state.current;
+    var counts = lapCountsByMinute();
     for (var i = 1; i <= 6; i++) {
-      if (!manualMetros[i]) t.filas[i].metros = counts[i] * t.metrosPorVuelta;
+      if (!manualMetros[i]) {
+        // Al arrancar la prueba el paciente ya recorre la primera vuelta antes de
+        // que se llegue a tocar "Vuelta" por primera vez, así que el minuto 1
+        // arranca con esa vuelta ya acreditada.
+        var base = (i === 1) ? t.metrosPorVuelta : 0;
+        t.filas[i].metros = base + counts[i] * t.metrosPorVuelta;
+      }
     }
   }
 
@@ -68,10 +83,38 @@ TM6M.test = (function () {
     el('test-meters-total').textContent = TM6M.calc.metrosTotales(t.filas);
   }
 
+  // --- Flechas de sentido de marcha (↑ al arrancar, alterna ↓/↑ en cada vuelta) ---
+
+  function arrowSequence(count) {
+    var seq = ['up'];
+    for (var k = 1; k <= count; k++) seq.push(k % 2 === 1 ? 'down' : 'up');
+    return seq;
+  }
+
+  function arrowGlyphsHtml(seq) {
+    return seq.map(function (d) {
+      return '<span class="arrow-chip ' + d + '">' + (d === 'up' ? '↑' : '↓') + '</span>';
+    }).join('');
+  }
+
+  function currentMinuteIndex() {
+    var sec = Math.floor(getElapsedMs() / 1000);
+    return Math.max(1, Math.min(6, Math.floor(sec / 60) + 1));
+  }
+
+  function updateDirectionBox() {
+    var box = el('test-direction-box');
+    if (!box) return;
+    var counts = lapCountsByMinute();
+    var seq = arrowSequence(counts[currentMinuteIndex()] || 0);
+    box.innerHTML = arrowGlyphsHtml(seq);
+  }
+
   function tick() {
     var ms = getElapsedMs();
     el('test-timer').textContent = TM6M.ui.fmtTime(ms);
     updateTimerRing(ms);
+    updateDirectionBox();
     var sec = Math.floor(ms / 1000);
     var t = TM6M.state.current;
 
@@ -145,7 +188,7 @@ TM6M.test = (function () {
       hint.textContent = 'Se detuvo en el minuto ' + TM6M.calc.fmtMinSec(actual.inicioSec) + '. Cargá cómo estaba en ese momento:';
       box.appendChild(hint);
       box.appendChild(TM6M.ui.fieldBlock('SpO2 %', function (b) {
-        TM6M.ui.buildSpo2Field(b, actual.spo2, function (v) { actual.spo2 = v; });
+        TM6M.ui.buildNumberInput(b, actual.spo2, function (v) { actual.spo2 = v; }, { placeholder: '%' });
       }));
       box.appendChild(TM6M.ui.fieldBlock('FC (lpm)', function (b) {
         TM6M.ui.buildNumberInput(b, actual.fc, function (v) { actual.fc = v; });
@@ -175,6 +218,58 @@ TM6M.test = (function () {
     });
   }
 
+  // --- Finalizar antes de tiempo ---
+
+  function requestEarlyFinish() {
+    if (!confirm('¿Terminar la caminata antes de tiempo? Se va a pedir SpO2, FC y Borg del momento antes de pasar a recuperación.')) return;
+    pendingEarlyFinish = { sec: Math.floor(getElapsedMs() / 1000), spo2: null, fc: null, borgDisnea: null, borgMmii: null };
+    renderEarlyFinishBox();
+  }
+
+  function renderEarlyFinishBox() {
+    var box = el('test-earlyfinish-box');
+    if (!pendingEarlyFinish) { box.hidden = true; box.innerHTML = ''; return; }
+    var d = pendingEarlyFinish;
+    box.hidden = false;
+    box.innerHTML = '';
+    var hint = document.createElement('p');
+    hint.className = 'hint';
+    hint.textContent = 'Se termina antes de tiempo en el minuto ' + TM6M.calc.fmtMinSec(d.sec) + '. Cargá cómo estaba en ese momento:';
+    box.appendChild(hint);
+    box.appendChild(TM6M.ui.fieldBlock('SpO2 %', function (b) {
+      TM6M.ui.buildNumberInput(b, d.spo2, function (v) { d.spo2 = v; }, { placeholder: '%' });
+    }));
+    box.appendChild(TM6M.ui.fieldBlock('FC (lpm)', function (b) {
+      TM6M.ui.buildNumberInput(b, d.fc, function (v) { d.fc = v; });
+    }));
+    box.appendChild(TM6M.ui.fieldBlock('Borg disnea', function (b) {
+      TM6M.ui.buildBorgSelector(b, d.borgDisnea, function (v) { d.borgDisnea = v; });
+    }));
+    box.appendChild(TM6M.ui.fieldBlock('Borg MMII', function (b) {
+      TM6M.ui.buildBorgSelector(b, d.borgMmii, function (v) { d.borgMmii = v; });
+    }));
+
+    var confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    confirmBtn.className = 'btn btn-primary btn-block';
+    confirmBtn.textContent = 'Confirmar y finalizar';
+    confirmBtn.addEventListener('click', function () {
+      TM6M.state.current.terminoAnticipado = pendingEarlyFinish;
+      finishWalk();
+    });
+    box.appendChild(confirmBtn);
+
+    var cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-secondary btn-block';
+    cancelBtn.textContent = 'Cancelar';
+    cancelBtn.addEventListener('click', function () {
+      pendingEarlyFinish = null;
+      renderEarlyFinishBox();
+    });
+    box.appendChild(cancelBtn);
+  }
+
   function summaryText(f) {
     var allEmpty = !f.completado && f.spo2 === null && f.fc === null && f.borgDisnea === null && f.borgMmii === null;
     if (allEmpty) return 'pendiente';
@@ -188,7 +283,8 @@ TM6M.test = (function () {
     var container = el('test-rows');
     container.innerHTML = '';
     var sec = Math.floor(getElapsedMs() / 1000);
-    openRowCtrl = null;
+    var curMinute = currentMinuteIndex();
+    var counts = lapCountsByMinute();
 
     for (var i = 1; i <= 6; i++) {
       (function (i) {
@@ -207,13 +303,19 @@ TM6M.test = (function () {
         });
         row.appendChild(head);
 
+        if (counts[i] > 0 || i === curMinute) {
+          var arrowsRow = document.createElement('div');
+          arrowsRow.className = 'minute-row-arrows';
+          arrowsRow.innerHTML = arrowGlyphsHtml(arrowSequence(counts[i]));
+          row.appendChild(arrowsRow);
+        }
+
         var body = document.createElement('div');
         body.className = 'minute-row-body';
         if (openRow === i) {
-          var ctrl = TM6M.ui.buildFilaFields(body, fila, {
-            onManualMetros: function () { manualMetros[i] = true; }
+          TM6M.ui.buildFilaFields(body, fila, {
+            onManualMetros: function () { manualMetros[i] = true; updateMetersUI(); }
           });
-          openRowCtrl = ctrl;
 
           var doneBtn = document.createElement('button');
           doneBtn.type = 'button';
@@ -240,16 +342,16 @@ TM6M.test = (function () {
     el('lap-meters').textContent = t.metrosPorVuelta;
     updateMetersUI();
     updateTimerRing(getElapsedMs());
+    updateDirectionBox();
     renderRows();
     renderParadas();
+    renderEarlyFinishBox();
   }
 
   function init() {
     el('btn-lap').addEventListener('click', addLap);
     el('btn-test-parada').addEventListener('click', toggleParada);
-    el('btn-test-finish').addEventListener('click', function () {
-      if (confirm('¿Terminar la caminata antes de tiempo? Se pasa directo a la recuperación.')) finishWalk();
-    });
+    el('btn-test-finish').addEventListener('click', requestEarlyFinish);
   }
 
   return { init: init, start: start, render: render };

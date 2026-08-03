@@ -39,6 +39,7 @@ TM6M.ui = (function () {
     target.classList.add('active');
     el('app-bar-title').textContent = viewTitles[name] || 'Test de Marcha 6’';
     el('btn-back').hidden = (name === 'home');
+    el('btn-home').hidden = (name === 'home');
     updateStepper(name);
     window.scrollTo(0, 0);
     currentView = name;
@@ -54,6 +55,13 @@ TM6M.ui = (function () {
     var guard = guards[currentView];
     if (guard && !guard()) return;
     history.back();
+  }
+
+  function goHome() {
+    if (currentView === 'home') return;
+    var guard = guards[currentView];
+    if (guard && !guard()) return;
+    showView('home');
   }
 
   window.addEventListener('popstate', function (e) {
@@ -189,70 +197,17 @@ TM6M.ui = (function () {
     return input;
   }
 
-  function buildSpo2Field(container, initialValue, onChange) {
-    container.innerHTML = '';
-    container.classList.add('spo2-field');
-    var sinSenal = (initialValue === null || initialValue === undefined);
-    var value = initialValue;
-
-    var input = document.createElement('input');
-    input.type = 'number';
-    input.inputMode = 'numeric';
-    input.placeholder = '%';
-
-    var chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'chip';
-    chip.textContent = 'Sin señal';
-
-    function render() {
-      input.disabled = sinSenal;
-      input.value = sinSenal ? '' : (value === null || value === undefined ? '' : value);
-      chip.classList.toggle('selected', sinSenal);
-    }
-
-    input.addEventListener('input', function () {
-      var raw = input.value.trim();
-      value = raw === '' ? null : Number(raw);
-      if (isNaN(value)) value = null;
-      onChange(value);
-    });
-
-    chip.addEventListener('click', function () {
-      sinSenal = !sinSenal;
-      if (sinSenal) {
-        value = null;
-        onChange(null);
-        render();
-      } else {
-        render();
-        input.focus();
-      }
-    });
-
-    container.appendChild(input);
-    container.appendChild(chip);
-    render();
-
-    return {
-      getValue: function () { return sinSenal ? null : value; },
-      setValue: function (v) { sinSenal = (v === null || v === undefined); value = v; render(); }
-    };
-  }
-
   function buildFilaFields(container, fila, opts) {
     opts = opts || {};
     container.innerHTML = '';
-    var spo2Ctrl = null;
-    var fcInput = null;
     container.appendChild(fieldBlock('SpO2 %', function (box) {
-      spo2Ctrl = TM6M.ui.buildSpo2Field(box, fila.spo2, function (v) {
+      TM6M.ui.buildNumberInput(box, fila.spo2, function (v) {
         fila.spo2 = v;
         if (opts.onManualSpo2) opts.onManualSpo2();
-      });
+      }, { placeholder: '%' });
     }));
     container.appendChild(fieldBlock('FC (lpm)', function (box) {
-      fcInput = TM6M.ui.buildNumberInput(box, fila.fc, function (v) {
+      TM6M.ui.buildNumberInput(box, fila.fc, function (v) {
         fila.fc = v;
         if (opts.onManualFc) opts.onManualFc();
       });
@@ -271,17 +226,13 @@ TM6M.ui = (function () {
     container.appendChild(fieldBlock('Borg MMII', function (box) {
       TM6M.ui.buildBorgSelector(box, fila.borgMmii, function (v) { fila.borgMmii = v; });
     }));
-
-    return {
-      setSpo2: function (v) { fila.spo2 = v; if (spo2Ctrl) spo2Ctrl.setValue(v); },
-      setFc: function (v) { fila.fc = v; if (fcInput) fcInput.value = (v === null ? '' : v); }
-    };
   }
 
   return {
     showView: showView,
     setLeaveGuard: setLeaveGuard,
     goBack: goBack,
+    goHome: goHome,
     toast: toast,
     vibrate: vibrate,
     fmtTime: fmtTime,
@@ -289,7 +240,6 @@ TM6M.ui = (function () {
     buildSegmented: buildSegmented,
     buildBorgSelector: buildBorgSelector,
     buildNumberInput: buildNumberInput,
-    buildSpo2Field: buildSpo2Field,
     buildFilaFields: buildFilaFields,
     formatTaDigits: formatTaDigits,
     attachTaFormatter: attachTaFormatter,

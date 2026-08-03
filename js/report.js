@@ -22,8 +22,13 @@ TM6M.report = (function () {
 
   function fieldLine(label, value, full) {
     var d = document.createElement('div');
-    if (full) d.className = 'full';
-    d.innerHTML = '<strong>' + label + ':</strong> ' + escapeHtml(String(value));
+    d.className = full ? 'report-field full' : 'report-field';
+    var l = document.createElement('strong');
+    l.textContent = label + ': ';
+    var v = document.createElement('span');
+    v.textContent = String(value);
+    d.appendChild(l);
+    d.appendChild(v);
     return d;
   }
 
@@ -127,6 +132,11 @@ TM6M.report = (function () {
       p.textContent = line;
       conclusion.appendChild(p);
     });
+    if (r.terminoAnticipadoLine) {
+      var pTermino = document.createElement('p');
+      pTermino.textContent = r.terminoAnticipadoLine;
+      conclusion.appendChild(pTermino);
+    }
     if (taResp) {
       var pTa = document.createElement('p');
       pTa.textContent = 'Respuesta de TA ' + (taResp === 'adecuada' ? 'adecuada' : 'aplanada') + '.';
@@ -213,13 +223,22 @@ TM6M.report = (function () {
         blob: pdfBlob
       });
     }).then(function () {
+      // El mail ya salió bien. Guardar en Drive es un paso aparte: si falla (ej. la
+      // Google Drive API no está habilitada en Cloud Console), no hay que dar a entender
+      // que el envío del mail falló, porque no fue así.
+      TM6M.ui.toast('Mail enviado');
       statusEl.textContent = 'Mail enviado a ' + email + '. Guardando copia en Drive…';
-      return TM6M.google.uploadToDrive({ filename: TM6M.pdfgen.filename(t), blob: pdfBlob });
-    }).then(function () {
-      statusEl.textContent = 'Mail enviado a ' + email + ' y copia guardada en tu Drive.';
-      TM6M.ui.toast('Mail enviado y guardado en Drive');
+      return TM6M.google.uploadToDrive({ filename: TM6M.pdfgen.filename(t), blob: pdfBlob })
+        .then(function () {
+          statusEl.textContent = 'Mail enviado a ' + email + ' y copia guardada en tu Drive.';
+        })
+        .catch(function (driveErr) {
+          statusEl.textContent = 'Mail enviado a ' + email + '. No se pudo guardar la copia en Drive: ' +
+            (driveErr && driveErr.message ? driveErr.message : 'error desconocido') +
+            ' (revisá que la Google Drive API esté habilitada en Cloud Console).';
+        });
     }).catch(function (err) {
-      statusEl.textContent = 'No se pudo enviar: ' + (err && err.message ? err.message : 'error desconocido');
+      statusEl.textContent = 'No se pudo enviar el mail: ' + (err && err.message ? err.message : 'error desconocido');
       TM6M.ui.toast('No se pudo enviar el mail', 4000);
     }).finally(function () {
       btn.disabled = false;

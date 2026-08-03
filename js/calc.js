@@ -68,6 +68,13 @@ TM6M.calc = (function () {
     });
   }
 
+  function buildTerminoAnticipadoLine(term) {
+    if (!term || !isNum(term.sec)) return null;
+    return 'La prueba se detiene en el minuto ' + fmtMinSec(term.sec) + ' con SpO2 de ' + fmtOrDash(term.spo2) +
+      '%, FC de ' + fmtOrDash(term.fc) + ', Borg de disnea ' + fmtOrDash(term.borgDisnea) +
+      ' y Borg de MMII de ' + fmtOrDash(term.borgMmii) + '.';
+  }
+
   // "120/80" -> {sys:120, dia:80}
   function parseTa(str) {
     if (!str) return null;
@@ -162,6 +169,7 @@ TM6M.calc = (function () {
       bmi: bmiVal,
       conclusionLines: conclusionLines,
       paradaLines: buildParadaLines(t.paradas),
+      terminoAnticipadoLine: buildTerminoAnticipadoLine(t.terminoAnticipado),
       taResp: classifyTaResponse(t.taInicial, t.taFinal)
     };
   }
@@ -178,6 +186,7 @@ TM6M.calc = (function () {
     buildConclusion: buildConclusion,
     fmtMinSec: fmtMinSec,
     buildParadaLines: buildParadaLines,
+    buildTerminoAnticipadoLine: buildTerminoAnticipadoLine,
     parseTa: parseTa,
     classifyTaResponse: classifyTaResponse,
     validatePatientBasics: validatePatientBasics,

@@ -14,6 +14,7 @@
 
 <header class="app-bar no-print" id="app-bar">
   <button id="btn-back" class="icon-btn" aria-label="Volver" hidden>&#8592;</button>
+  <button id="btn-home" class="icon-btn" aria-label="Inicio" hidden>&#127968;</button>
   <h1 id="app-bar-title">Test de Marcha 6&#8217;</h1>
   <button id="btn-settings" class="icon-btn" aria-label="Ajustes">&#9881;&#65039;</button>
 </header>
@@ -94,9 +95,12 @@
         </svg>
         <div id="test-timer" class="timer-display">00:00</div>
       </div>
+      <p class="direction-label">Sentido de marcha</p>
+      <div id="test-direction-box" class="direction-box"></div>
       <div class="timer-controls">
         <button id="btn-test-finish" class="btn btn-warning">Finalizar antes de tiempo</button>
       </div>
+      <div id="test-earlyfinish-box" class="card" hidden></div>
     </div>
 
     <button id="btn-test-parada" class="btn btn-secondary btn-block btn-lg">&#9208; El paciente se detiene</button>
@@ -222,7 +226,7 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <script src="js/storage.js"></script>
