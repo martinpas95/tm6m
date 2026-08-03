@@ -92,15 +92,14 @@ TM6M.calc = (function () {
     return deltaSys < 10 ? 'aplanada' : 'adecuada';
   }
 
-  // Desaturación significativa: caída de SpO2 >= 4 puntos entre el basal y el mínimo
-  // registrado durante la caminata (minutos 1 a 6).
+  // Desaturación significativa: diferencia >= 4 puntos de SpO2 entre cualquier par de
+  // valores registrados en toda la prueba, incluyendo el basal (no solo basal vs. mínimo).
   function checkDesaturacion(filas) {
-    var basal = filas[0] ? filas[0].spo2 : null;
-    var durante = filas.slice(1).map(function (f) { return f.spo2; }).filter(isNum);
-    if (!isNum(basal) || !durante.length) return null;
-    var minDurante = Math.min.apply(null, durante);
-    var caida = basal - minDurante;
-    return { significativa: caida >= 4, caida: caida, basal: basal, minDurante: minDurante };
+    var vals = filas.map(function (f) { return f.spo2; }).filter(isNum);
+    if (!vals.length) return null;
+    var max = Math.max.apply(null, vals);
+    var min = Math.min.apply(null, vals);
+    return { significativa: (max - min) >= 4, diff: max - min, max: max, min: min };
   }
 
   var LIMITES = {
@@ -153,10 +152,9 @@ TM6M.calc = (function () {
 
   function buildDesaturacionLine(desat) {
     if (!desat) return null;
-    if (desat.significativa) {
-      return 'Presenta desaturación significativa (caída de SpO2 de ' + Math.round(desat.caida) + ' puntos: de ' + desat.basal + '% a ' + desat.minDurante + '%).';
-    }
-    return 'No presenta desaturación significativa durante la prueba.';
+    return desat.significativa
+      ? 'Presenta desaturación significativa durante la prueba.'
+      : 'No presenta desaturación significativa durante la prueba.';
   }
 
   function computeReport(t) {
@@ -167,6 +165,7 @@ TM6M.calc = (function () {
     var pctMetros = pctMetrosPredicho(metrosTot, metrosPred);
     var bmiVal = bmi(Number(t.peso), Number(t.talla));
     var finalFila = t.filas[6];
+    var desat = checkDesaturacion(t.filas);
 
     var conclusionLines = buildConclusion({
       pctFc: pctFc,
@@ -190,7 +189,8 @@ TM6M.calc = (function () {
       paradaLines: buildParadaLines(t.paradas),
       terminoAnticipadoLine: buildTerminoAnticipadoLine(t.terminoAnticipado),
       taResp: classifyTaResponse(t.taInicial, t.taFinal),
-      desaturacionLine: buildDesaturacionLine(checkDesaturacion(t.filas))
+      desaturacionLine: buildDesaturacionLine(desat),
+      spo2Min: desat ? desat.min : null
     };
   }
 

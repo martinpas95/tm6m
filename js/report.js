@@ -113,6 +113,7 @@ TM6M.report = (function () {
     results.appendChild(resultLine('Total de metros recorridos', fmt(round1(metrosTot), 'm')));
     results.appendChild(resultLine('Valores predichos', metrosPred ? (Math.round(metrosPred) + ' m') : '—'));
     results.appendChild(resultLine('FC máxima alcanzada', fmt(fcMax, 'lpm')));
+    results.appendChild(resultLine('Saturación mínima', fmt(r.spo2Min, '%')));
     results.appendChild(resultLine('Porcentaje FC predicha', fmt(pctFc, '%')));
     results.appendChild(resultLine('Porcentaje metros predicho', c.isNum(pctMetros) ? (pctMetros.toFixed(1) + '%') : '—'));
     sheet.appendChild(results);

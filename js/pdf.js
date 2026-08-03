@@ -136,6 +136,7 @@ TM6M.pdfgen = (function () {
       ['Total de metros recorridos', fmt(round1(r.metrosTot), 'm')],
       ['Valores predichos', r.metrosPred ? (Math.round(r.metrosPred) + ' m') : '—'],
       ['FC máxima alcanzada', fmt(r.fcMax, 'lpm')],
+      ['Saturación mínima', fmt(r.spo2Min, '%')],
       ['Porcentaje FC predicha', fmt(r.pctFc, '%')],
       ['Porcentaje metros predicho', c.isNum(r.pctMetros) ? (r.pctMetros.toFixed(1) + '%') : '—']
     ];
