@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0b5f6e">
+<title>Test de Marcha 6 Minutos</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="app-bar no-print" id="app-bar">
+  <button id="btn-back" class="icon-btn" aria-label="Volver" hidden>&#8592;</button>
+  <h1 id="app-bar-title">Test de Marcha 6&#8217;</h1>
+  <button id="btn-settings" class="icon-btn" aria-label="Ajustes">&#9881;&#65039;</button>
+</header>
+<div id="stepper" class="stepper no-print" hidden>
+  <div class="stepper-step" data-step="patient"><span class="stepper-dot">1</span><span class="stepper-label">Datos</span></div>
+  <div class="stepper-step" data-step="test"><span class="stepper-dot">2</span><span class="stepper-label">Prueba</span></div>
+  <div class="stepper-step" data-step="recovery"><span class="stepper-dot">3</span><span class="stepper-label">Recuperación</span></div>
+  <div class="stepper-step" data-step="review"><span class="stepper-dot">4</span><span class="stepper-label">Revisión</span></div>
+  <div class="stepper-step" data-step="report"><span class="stepper-dot">5</span><span class="stepper-label">Informe</span></div>
+</div>
+
+<main id="app-main">
+
+  <section id="view-home" class="view">
+    <div class="home-actions">
+      <button id="btn-new-test" class="btn btn-primary btn-block btn-lg">+ Nuevo test</button>
+    </div>
+    <div class="search-box">
+      <input type="search" id="home-search" placeholder="Buscar paciente...">
+    </div>
+    <ul id="home-list" class="test-list"></ul>
+    <p id="home-empty" class="empty-state" hidden>Todav&iacute;a no hay tests guardados. Toc&aacute; &laquo;Nuevo test&raquo; para empezar.</p>
+  </section>
+
+  <section id="view-patient" class="view">
+    <h2>Datos del paciente</h2>
+    <form id="patient-form" class="form" novalidate>
+      <label>Fecha
+        <input type="date" id="p-fecha" required>
+      </label>
+      <label>Paciente
+        <input type="text" id="p-nombre" required placeholder="Nombre y apellido" autocomplete="off">
+      </label>
+      <div class="field-row">
+        <label>Edad
+          <input type="number" id="p-edad" min="1" max="120" inputmode="numeric" required>
+        </label>
+        <label>Sexo
+          <div class="segmented" id="p-sexo"></div>
+        </label>
+      </div>
+      <div class="field-row">
+        <label>Peso (kg)
+          <input type="number" id="p-peso" step="0.1" min="20" max="300" inputmode="decimal" required>
+        </label>
+        <label>Talla (cm)
+          <input type="number" id="p-talla" step="1" min="100" max="250" inputmode="numeric" required>
+        </label>
+      </div>
+      <p class="hint" id="p-bmi-hint">BMI: &mdash;</p>
+      <label>Diagn&oacute;stico
+        <input type="text" id="p-diagnostico" placeholder="Opcional" autocomplete="off">
+      </label>
+      <label>T&eacute;cnico
+        <input type="text" id="p-tecnico" autocomplete="off">
+      </label>
+
+      <h3>Antes de empezar</h3>
+      <label>TA inicial
+        <input type="text" id="p-ta-inicial" placeholder="ej: 120/80" autocomplete="off">
+      </label>
+
+      <div class="basal-block">
+        <p class="section-label">Basal (antes de caminar)</p>
+        <div id="p-basal-fields"></div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg">Iniciar prueba &#9654;</button>
+    </form>
+  </section>
+
+  <section id="view-test" class="view">
+    <div class="timer-block">
+      <div class="timer-ring-wrap">
+        <svg class="timer-ring-svg" viewBox="0 0 120 120">
+          <circle class="timer-ring-bg" cx="60" cy="60" r="54"></circle>
+          <circle class="timer-ring-fg" id="test-timer-ring" cx="60" cy="60" r="54"></circle>
+        </svg>
+        <div id="test-timer" class="timer-display">00:00</div>
+      </div>
+      <div class="timer-controls">
+        <button id="btn-test-finish" class="btn btn-warning">Finalizar antes de tiempo</button>
+      </div>
+    </div>
+
+    <button id="btn-test-parada" class="btn btn-secondary btn-block btn-lg">&#9208; El paciente se detiene</button>
+    <div id="test-parada-box" class="card" hidden></div>
+    <ul id="test-parada-list" class="parada-list"></ul>
+
+    <button id="btn-lap" class="btn btn-primary btn-lg btn-block lap-btn">Vuelta &nbsp;(+<span id="lap-meters">15</span>&nbsp;m)</button>
+    <p class="meters-total">Metros: <strong id="test-meters-total">0</strong> m &middot; Vueltas: <span id="lap-count">0</span></p>
+
+    <div id="test-rows" class="minute-list"></div>
+  </section>
+
+  <section id="view-recovery" class="view">
+    <h2>Recuperaci&oacute;n</h2>
+    <div class="timer-block">
+      <div id="recovery-timer" class="timer-display">00:00</div>
+    </div>
+
+    <div class="card" id="recovery-fc1-card">
+      <label>FC al minuto de finalizar
+        <input type="number" id="r-fc-1min" inputmode="numeric" placeholder="lpm">
+      </label>
+    </div>
+
+    <div class="card">
+      <p class="section-label">Saturaci&oacute;n</p>
+      <div id="recovery-sat-status" class="status-text">Sin marcar</div>
+      <button id="btn-sat-recovered" class="btn btn-secondary btn-block">Marcar saturaci&oacute;n recuperada</button>
+    </div>
+
+    <div class="card">
+      <p class="section-label">Frecuencia card&iacute;aca</p>
+      <div id="recovery-fc-status" class="status-text">Sin marcar</div>
+      <button id="btn-fc-recovered" class="btn btn-secondary btn-block">Marcar FC recuperada</button>
+    </div>
+
+    <label>TA final
+      <input type="text" id="r-ta-final" placeholder="ej: 120/80" autocomplete="off">
+    </label>
+
+    <button id="btn-recovery-finish" class="btn btn-primary btn-block btn-lg">Continuar a revisi&oacute;n &#9654;</button>
+  </section>
+
+  <section id="view-review" class="view">
+    <h2>Revisar antes de generar el informe</h2>
+    <p class="hint">Corregi lo que haga falta: nada se guarda hasta que confirmes el informe.</p>
+    <div id="review-content"></div>
+    <button id="btn-review-generate" class="btn btn-primary btn-block btn-lg">Generar informe &#9654;</button>
+  </section>
+
+  <section id="view-report" class="view">
+    <div class="no-print report-toolbar">
+      <button id="btn-report-edit" class="btn btn-secondary">&#9998; Editar datos</button>
+      <button id="btn-report-print" class="btn btn-secondary">&#128424;&#65039; Imprimir</button>
+      <button id="btn-report-pdf" class="btn btn-secondary">&#8681; Descargar PDF</button>
+      <button id="btn-report-save" class="btn btn-primary">&#128190; Guardar</button>
+    </div>
+
+    <div class="no-print card">
+      <p class="section-label">Enviar por mail</p>
+      <label>Email del paciente
+        <input type="email" id="r-paciente-email" placeholder="paciente@ejemplo.com" autocomplete="off">
+      </label>
+      <button id="btn-report-mail" class="btn btn-secondary btn-block">&#9993; Enviar informe por mail</button>
+      <div id="report-mail-status" class="hint"></div>
+    </div>
+
+    <article id="report-sheet" class="report-sheet"></article>
+
+    <div class="no-print report-toolbar report-toolbar-bottom">
+      <button id="btn-report-new" class="btn btn-primary btn-block btn-lg">+ Nuevo test</button>
+    </div>
+  </section>
+
+  <section id="view-settings" class="view">
+    <h2>Ajustes</h2>
+    <form id="settings-form" class="form">
+      <label>M&eacute;dico
+        <input type="text" id="s-medico">
+      </label>
+      <label>Matr&iacute;cula
+        <input type="text" id="s-matricula">
+      </label>
+      <label>Especialidad
+        <input type="text" id="s-especialidad">
+      </label>
+      <label>T&eacute;cnico por defecto
+        <input type="text" id="s-tecnico">
+      </label>
+      <label>Metros por vuelta
+        <input type="number" id="s-metros-vuelta" min="1" step="0.5">
+      </label>
+      <button type="submit" class="btn btn-primary btn-block">Guardar ajustes</button>
+    </form>
+    <hr>
+    <div class="settings-google">
+      <p class="section-label">Enviar por Gmail y guardar en Drive</p>
+      <p class="hint">Para poder enviar el informe por mail y guardar una copia en tu Drive hace falta un Client ID de Google propio (gratis, se crea una sola vez). Ver el paso a paso en el README del proyecto.</p>
+      <label>Client ID de Google
+        <input type="text" id="s-google-client-id" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off">
+      </label>
+      <label>Nombre del remitente (lo que ve el paciente en vez de tu nombre)
+        <input type="text" id="s-remitente" placeholder="Test de Caminata - Sanatorio Finochietto" autocomplete="off">
+      </label>
+      <p class="hint">Esto cambia c&oacute;mo se ve el remitente en la bandeja del paciente. La direcci&oacute;n de mail en s&iacute; sigue siendo la cuenta de Google que conectes abajo &mdash; si quer&eacute;s que tampoco se vea tu mail personal, cre&aacute; una cuenta de Gmail nueva y gratuita solo para esto, y conectala en vez de la tuya.</p>
+      <button id="btn-google-save" class="btn btn-secondary btn-block">Guardar Client ID y remitente</button>
+      <div id="google-status" class="status-text">Sin configurar</div>
+      <button id="btn-google-connect" class="btn btn-secondary btn-block">Conectar con Google</button>
+      <button id="btn-google-disconnect" class="btn btn-danger btn-block" hidden>Desconectar de Google</button>
+    </div>
+    <hr>
+    <div class="settings-backup">
+      <p class="section-label">Copia de seguridad</p>
+      <p class="hint">Los datos viven solo en este celular. Export&aacute; una copia de tanto en tanto por si se resetea el tel&eacute;fono.</p>
+      <button id="btn-export" class="btn btn-secondary btn-block">Exportar copia (JSON)</button>
+      <label class="btn btn-secondary btn-block file-btn" for="input-import">Importar copia
+        <input type="file" id="input-import" accept="application/json" hidden>
+      </label>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script src="js/storage.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/logo.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/google.js"></script>
+<script src="js/home.js"></script>
+<script src="js/patient.js"></script>
+<script src="js/test.js"></script>
+<script src="js/recovery.js"></script>
+<script src="js/review.js"></script>
+<script src="js/report.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
