@@ -85,17 +85,28 @@ TM6M.test = (function () {
   }
 
   // --- Flechas de sentido de marcha ---
-  // La flecha ↑ automática (sin haber tocado "Vuelta") existe UNA sola vez, al
-  // arrancar la prueba entera (minuto 1). De ahí en más, en cualquier minuto —
-  // incluso al cambiar de minuto — es 100% manual: el recuadro arranca vacío y
-  // solo se llena con toques reales de "Vuelta".
+  // La alternancia (↑ inicial, después ↓/↑/↓...) es continua a lo largo de TODA la
+  // prueba, sin importar el minuto: cada toque real de "Vuelta" es lo opuesto del
+  // toque anterior (o del ↑ inicial si es el primero). El recuadro en pantalla y lo
+  // que queda junto a cada "Minuto X" solo muestran el tramo de esa alternancia que
+  // corresponde a ese minuto, pero la secuencia en sí nunca se reinicia.
 
-  function arrowSequence(count, seeded) {
-    var seq = seeded ? ['up'] : [];
-    for (var k = 1; k <= count; k++) {
-      var isFirstOfPair = seeded ? (k % 2 === 1) : (k % 2 === 0);
-      seq.push(isFirstOfPair ? 'down' : 'up');
-    }
+  // Una entrada por cada vuelta real, en orden cronológico: {minuto, dir}.
+  function globalArrowTaps() {
+    var t = TM6M.state.current;
+    return t.vueltas.map(function (sec, idx) {
+      return {
+        minute: Math.min(6, Math.floor(sec / 60) + 1),
+        dir: idx % 2 === 0 ? 'down' : 'up'
+      };
+    });
+  }
+
+  function arrowsForMinute(globalTaps, minuteIndex) {
+    var seq = (minuteIndex === 1) ? ['up'] : [];
+    globalTaps.forEach(function (tap) {
+      if (tap.minute === minuteIndex) seq.push(tap.dir);
+    });
     return seq;
   }
 
@@ -113,9 +124,7 @@ TM6M.test = (function () {
   function updateDirectionBox() {
     var box = el('test-direction-box');
     if (!box) return;
-    var counts = lapCountsByMinute();
-    var curMinute = currentMinuteIndex();
-    var seq = arrowSequence(counts[curMinute] || 0, curMinute === 1);
+    var seq = arrowsForMinute(globalArrowTaps(), currentMinuteIndex());
     box.innerHTML = arrowGlyphsHtml(seq);
   }
 
@@ -292,7 +301,7 @@ TM6M.test = (function () {
     var container = el('test-rows');
     container.innerHTML = '';
     var sec = Math.floor(getElapsedMs() / 1000);
-    var counts = lapCountsByMinute();
+    var globalTaps = globalArrowTaps();
 
     for (var i = 1; i <= 6; i++) {
       (function (i) {
@@ -311,7 +320,7 @@ TM6M.test = (function () {
         });
         row.appendChild(head);
 
-        var seqForRow = arrowSequence(counts[i], i === 1);
+        var seqForRow = arrowsForMinute(globalTaps, i);
         if (seqForRow.length) {
           var arrowsRow = document.createElement('div');
           arrowsRow.className = 'minute-row-arrows';

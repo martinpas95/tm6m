@@ -20,6 +20,26 @@ TM6M.report = (function () {
   }
   function fmtCell(v) { return (v === null || v === undefined) ? '' : v; }
 
+  // Convierte cualquier URL suelta dentro de un texto de error en un link tocable,
+  // para no obligar a copiar/pegar (ej. el link que manda Google para habilitar una API).
+  function setStatusWithLinks(elm, text) {
+    var urlPattern = /(https?:\/\/[^\s)]+)/g;
+    var parts = String(text).split(urlPattern);
+    elm.innerHTML = '';
+    parts.forEach(function (part) {
+      if (/^https?:\/\//.test(part)) {
+        var a = document.createElement('a');
+        a.href = part;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = part;
+        elm.appendChild(a);
+      } else if (part) {
+        elm.appendChild(document.createTextNode(part));
+      }
+    });
+  }
+
   function fieldLine(label, value, full) {
     var d = document.createElement('div');
     d.className = full ? 'report-field full' : 'report-field';
@@ -238,6 +258,7 @@ TM6M.report = (function () {
       // El mail ya salió bien. Guardar en Drive es un paso aparte: si falla (ej. la
       // Google Drive API no está habilitada en Cloud Console), no hay que dar a entender
       // que el envío del mail falló, porque no fue así.
+      save();
       TM6M.ui.toast('Mail enviado');
       statusEl.textContent = 'Mail enviado a ' + email + '. Guardando copia en Drive…';
       return TM6M.google.uploadToDrive({ filename: TM6M.pdfgen.filename(t), blob: pdfBlob })
@@ -245,9 +266,9 @@ TM6M.report = (function () {
           statusEl.textContent = 'Mail enviado a ' + email + ' y copia guardada en tu Drive.';
         })
         .catch(function (driveErr) {
-          statusEl.textContent = 'Mail enviado a ' + email + '. No se pudo guardar la copia en Drive: ' +
+          setStatusWithLinks(statusEl, 'Mail enviado a ' + email + '. No se pudo guardar la copia en Drive: ' +
             (driveErr && driveErr.message ? driveErr.message : 'error desconocido') +
-            ' (revisá que la Google Drive API esté habilitada en Cloud Console).';
+            ' — si el error menciona habilitar la Google Drive API, tocá el link de arriba y después "Habilitar".');
         });
     }).catch(function (err) {
       statusEl.textContent = 'No se pudo enviar el mail: ' + (err && err.message ? err.message : 'error desconocido');

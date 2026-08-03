@@ -2,7 +2,7 @@ window.TM6M = window.TM6M || {};
 TM6M.state = TM6M.state || { current: null };
 // Se actualiza a mano en cada cambio real que se sube — se muestra en Ajustes
 // para poder confirmar de un vistazo si el celular ya tiene la última versión.
-TM6M.APP_VERSION = '2026-08-03.1';
+TM6M.APP_VERSION = '2026-08-03.2';
 
 TM6M.storage = (function () {
   var KEY_TESTS = 'tm6m_tests_v1';

@@ -70,7 +70,7 @@ TM6M.calc = (function () {
 
   function buildTerminoAnticipadoLine(term) {
     if (!term || !isNum(term.sec)) return null;
-    return 'La prueba se detiene en el minuto ' + fmtMinSec(term.sec) + ' con SpO2 de ' + fmtOrDash(term.spo2) +
+    return 'Se finaliza la prueba en el minuto ' + fmtMinSec(term.sec) + ' con SpO2 de ' + fmtOrDash(term.spo2) +
       '%, FC de ' + fmtOrDash(term.fc) + ', Borg de disnea ' + fmtOrDash(term.borgDisnea) +
       ' y Borg de MMII de ' + fmtOrDash(term.borgMmii) + '.';
   }
@@ -94,8 +94,12 @@ TM6M.calc = (function () {
 
   // Desaturación significativa: diferencia >= 4 puntos de SpO2 entre cualquier par de
   // valores registrados en toda la prueba, incluyendo el basal (no solo basal vs. mínimo).
-  function checkDesaturacion(filas) {
-    var vals = filas.map(function (f) { return f.spo2; }).filter(isNum);
+  function checkDesaturacion(t) {
+    var vals = t.filas.map(function (f) { return f.spo2; }).filter(isNum);
+    if (t.paradas) {
+      t.paradas.forEach(function (p) { if (isNum(p.spo2)) vals.push(p.spo2); });
+    }
+    if (t.terminoAnticipado && isNum(t.terminoAnticipado.spo2)) vals.push(t.terminoAnticipado.spo2);
     if (!vals.length) return null;
     var max = Math.max.apply(null, vals);
     var min = Math.min.apply(null, vals);
@@ -165,7 +169,7 @@ TM6M.calc = (function () {
     var pctMetros = pctMetrosPredicho(metrosTot, metrosPred);
     var bmiVal = bmi(Number(t.peso), Number(t.talla));
     var finalFila = t.filas[6];
-    var desat = checkDesaturacion(t.filas);
+    var desat = checkDesaturacion(t);
 
     var conclusionLines = buildConclusion({
       pctFc: pctFc,
