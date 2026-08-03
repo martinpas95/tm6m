@@ -229,6 +229,34 @@ TM6M.review = (function () {
       label.appendChild(document.createTextNode('Se registraron picos hipertensivos durante la prueba'));
       c.appendChild(label);
 
+      var label2 = document.createElement('label');
+      label2.className = 'checkbox-label';
+      var cb2 = document.createElement('input');
+      cb2.type = 'checkbox';
+      cb2.checked = !!t.notas.dificultadSensado;
+      var detalleWrap2 = document.createElement('div');
+
+      function renderDetalle2() {
+        detalleWrap2.innerHTML = '';
+        if (!t.notas.dificultadSensado) return;
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'ej: esclerodactilia, uñas pintadas, mala perfusión periférica';
+        input.value = t.notas.dificultadSensadoDetalle || '';
+        input.addEventListener('input', function () { t.notas.dificultadSensadoDetalle = input.value; });
+        detalleWrap2.appendChild(input);
+      }
+
+      cb2.addEventListener('change', function () {
+        t.notas.dificultadSensado = cb2.checked;
+        renderDetalle2();
+      });
+      label2.appendChild(cb2);
+      label2.appendChild(document.createTextNode('Hubo dificultad para sensar SpO2/FC durante la prueba'));
+      c.appendChild(label2);
+      c.appendChild(detalleWrap2);
+      renderDetalle2();
+
       var ta = document.createElement('textarea');
       ta.rows = 3;
       ta.placeholder = 'Observaciones adicionales (opcional)';

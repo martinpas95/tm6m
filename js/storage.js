@@ -140,7 +140,7 @@ TM6M.model = (function () {
       startedAt: null,
       recuperacion: { fcAlMinuto: null, recuperaFcEnMin: null, recuperaSatEnMin: null },
       oxigeno: { suplementario: false, detalle: '' },
-      notas: { hipertensivos: false, libre: '' },
+      notas: { hipertensivos: false, dificultadSensado: false, dificultadSensadoDetalle: '', libre: '' },
       pacienteEmail: '',
       finalizado: false
     };

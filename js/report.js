@@ -147,6 +147,12 @@ TM6M.report = (function () {
       pHiper.textContent = 'Se registran registros hipertensivos, se sugiere su control.';
       conclusion.appendChild(pHiper);
     }
+    if (t.notas.dificultadSensado) {
+      var pSensado = document.createElement('p');
+      pSensado.textContent = 'Se registraron dificultades técnicas para el sensado de SpO2 y FC durante la prueba' +
+        (t.notas.dificultadSensadoDetalle ? (' (' + t.notas.dificultadSensadoDetalle + ')') : '') + '.';
+      conclusion.appendChild(pSensado);
+    }
     if (t.notas.libre) {
       var pLibre = document.createElement('p');
       pLibre.textContent = t.notas.libre;

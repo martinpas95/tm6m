@@ -157,6 +157,10 @@ TM6M.pdfgen = (function () {
     if (r.terminoAnticipadoLine) paragraph(r.terminoAnticipadoLine, 10);
     if (r.taResp) paragraph('Respuesta de TA ' + (r.taResp === 'adecuada' ? 'adecuada' : 'aplanada') + '.', 10);
     if (t.notas.hipertensivos) paragraph('Se registran registros hipertensivos, se sugiere su control.', 10);
+    if (t.notas.dificultadSensado) {
+      paragraph('Se registraron dificultades técnicas para el sensado de SpO2 y FC durante la prueba' +
+        (t.notas.dificultadSensadoDetalle ? (' (' + t.notas.dificultadSensadoDetalle + ')') : '') + '.', 10);
+    }
     if (t.notas.libre) paragraph(t.notas.libre, 10);
 
     y += 3;
