@@ -79,7 +79,8 @@ TM6M.test = (function () {
 
   function updateMetersUI() {
     var t = TM6M.state.current;
-    el('lap-count').textContent = t.vueltas.length;
+    // +1 porque la primera vuelta ya se acredita sola al arrancar (ver recomputeMetros).
+    el('lap-count').textContent = t.vueltas.length + 1;
     el('test-meters-total').textContent = TM6M.calc.metrosTotales(t.filas);
   }
 
