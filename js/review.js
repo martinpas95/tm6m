@@ -93,10 +93,10 @@ TM6M.review = (function () {
       }
 
       grid.appendChild(gridField('TA inicial', function (box) {
-        var i = textInput(box, t.taInicial, function (v) { t.taInicial = v; refreshTaResp(); });
+        TM6M.ui.buildTaInput(box, t.taInicial, function (v) { t.taInicial = v; refreshTaResp(); });
       }));
       grid.appendChild(gridField('TA final', function (box) {
-        var i = textInput(box, t.taFinal, function (v) { t.taFinal = v; refreshTaResp(); });
+        TM6M.ui.buildTaInput(box, t.taFinal, function (v) { t.taFinal = v; refreshTaResp(); });
       }));
       grid.appendChild(taRespHint);
       refreshTaResp();
@@ -115,6 +115,12 @@ TM6M.review = (function () {
         title.textContent = 'Parada ' + (idx + 1) + ': minuto ' + TM6M.calc.fmtMinSec(p.inicioSec) + (TM6M.calc.isNum(p.finSec) ? (' – ' + TM6M.calc.fmtMinSec(p.finSec)) : ' (sin retomar)');
         row.appendChild(title);
         var box = document.createElement('div');
+        box.appendChild(TM6M.ui.fieldBlock('SpO2 %', function (b) {
+          TM6M.ui.buildSpo2Field(b, p.spo2 === undefined ? null : p.spo2, function (v) { p.spo2 = v; });
+        }));
+        box.appendChild(TM6M.ui.fieldBlock('FC (lpm)', function (b) {
+          TM6M.ui.buildNumberInput(b, p.fc === undefined ? null : p.fc, function (v) { p.fc = v; });
+        }));
         box.appendChild(TM6M.ui.fieldBlock('Borg disnea', function (b) {
           TM6M.ui.buildBorgSelector(b, p.borgDisnea, function (v) { p.borgDisnea = v; });
         }));

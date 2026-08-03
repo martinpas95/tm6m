@@ -2,7 +2,6 @@ window.TM6M = window.TM6M || {};
 
 TM6M.settings = (function () {
   function el(id) { return document.getElementById(id); }
-  var bleWired = false;
 
   function render() {
     var s = TM6M.storage.loadSettings();
@@ -13,7 +12,6 @@ TM6M.settings = (function () {
     el('s-metros-vuelta').value = s.metrosPorVuelta;
     el('s-google-client-id').value = s.googleClientId || '';
     el('s-remitente').value = s.remitenteNombre || '';
-    renderBleStatus();
     renderGoogleStatus();
   }
 
@@ -43,39 +41,6 @@ TM6M.settings = (function () {
     disconnectBtn.hidden = true;
   }
 
-  function renderBleStatus() {
-    var st = TM6M.ble.getStatus();
-    var statusEl = el('ble-status');
-    var connectBtn = el('btn-ble-connect');
-    var disconnectBtn = el('btn-ble-disconnect');
-
-    if (!st.supported) {
-      statusEl.textContent = 'Este navegador no soporta Bluetooth. Usá Chrome en Android.';
-      connectBtn.hidden = true;
-      disconnectBtn.hidden = true;
-      return;
-    }
-    if (st.connecting) {
-      statusEl.textContent = 'Conectando…';
-      connectBtn.hidden = true;
-      disconnectBtn.hidden = true;
-      return;
-    }
-    if (st.connected) {
-      var reading = st.lastReading;
-      statusEl.textContent = 'Conectado a ' + (st.deviceName || 'oxímetro') +
-        (reading ? (' · SpO2 ' + (reading.spo2 !== null ? reading.spo2 + '%' : '—') + ' · FC ' + (reading.pr !== null ? reading.pr + ' lpm' : '—')) : ' · esperando datos…');
-      statusEl.classList.add('done');
-      connectBtn.hidden = true;
-      disconnectBtn.hidden = false;
-      return;
-    }
-    statusEl.textContent = 'No conectado. Tocá «Conectar» y elegí tu oxímetro de la lista.';
-    statusEl.classList.remove('done');
-    connectBtn.hidden = false;
-    disconnectBtn.hidden = true;
-  }
-
   function init() {
     el('settings-form').addEventListener('submit', function (e) {
       e.preventDefault();
@@ -85,7 +50,8 @@ TM6M.settings = (function () {
         especialidad: el('s-especialidad').value.trim(),
         tecnicoDefault: el('s-tecnico').value.trim(),
         metrosPorVuelta: Number(el('s-metros-vuelta').value) || 15,
-        googleClientId: TM6M.storage.loadSettings().googleClientId
+        googleClientId: TM6M.storage.loadSettings().googleClientId,
+        remitenteNombre: TM6M.storage.loadSettings().remitenteNombre
       };
       TM6M.storage.saveSettings(s);
       TM6M.ui.toast('Ajustes guardados');
@@ -147,27 +113,6 @@ TM6M.settings = (function () {
       reader.readAsText(file);
       e.target.value = '';
     });
-
-    el('btn-ble-connect').addEventListener('click', function () {
-      TM6M.ble.connect().then(function () {
-        TM6M.ui.toast('Oxímetro conectado');
-      }).catch(function (err) {
-        var msg = (err && err.name === 'NotFoundError')
-          ? 'No apareció ningún dispositivo, o el elegido no tiene el servicio de oximetría estándar. Esto suele pasar cuando el oxímetro usa Bluetooth clásico en vez de Bluetooth de baja energía (BLE) — en ese caso no hay forma de conectarlo desde el navegador, ni con este ni con ningún otro sitio web. Antes de descartarlo del todo: cerrá la app ViHealth y desemparejalo en los ajustes de Bluetooth del Android, después probá conectar de nuevo acá.'
-          : 'No se pudo conectar: ' + (err && err.message ? err.message : 'error desconocido');
-        TM6M.ui.toast(msg, 8000);
-        renderBleStatus();
-      });
-    });
-
-    el('btn-ble-disconnect').addEventListener('click', function () {
-      TM6M.ble.disconnect();
-    });
-
-    if (!bleWired) {
-      bleWired = true;
-      TM6M.ble.onStatusChange(renderBleStatus);
-    }
   }
 
   function todayCompact() {

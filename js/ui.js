@@ -156,6 +156,39 @@ TM6M.ui = (function () {
     return input;
   }
 
+  // Arma "120/80" solo mientras se escribe: al completar la sistólica (3 dígitos si
+  // empieza con 1 o 2, si no 2 dígitos) inserta la "/" automáticamente.
+  function formatTaDigits(digits, deleting) {
+    digits = digits.slice(0, 5);
+    if (digits.length === 0) return '';
+    var sysLen = (digits[0] === '1' || digits[0] === '2') ? 3 : 2;
+    if (digits.length < sysLen) return digits;
+    if (digits.length === sysLen) return deleting ? digits : (digits + '/');
+    return digits.slice(0, sysLen) + '/' + digits.slice(sysLen);
+  }
+
+  function attachTaFormatter(input, onChange) {
+    input.inputMode = 'numeric';
+    if (!input.placeholder) input.placeholder = '120/80';
+    input.addEventListener('input', function (e) {
+      var deleting = !!(e.inputType && e.inputType.indexOf('delete') === 0);
+      var digits = input.value.replace(/\D/g, '');
+      var formatted = formatTaDigits(digits, deleting);
+      input.value = formatted;
+      onChange(formatted);
+    });
+    return input;
+  }
+
+  function buildTaInput(container, initialValue, onChange) {
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.value = initialValue || '';
+    attachTaFormatter(input, onChange);
+    container.appendChild(input);
+    return input;
+  }
+
   function buildSpo2Field(container, initialValue, onChange) {
     container.innerHTML = '';
     container.classList.add('spo2-field');
@@ -257,6 +290,9 @@ TM6M.ui = (function () {
     buildBorgSelector: buildBorgSelector,
     buildNumberInput: buildNumberInput,
     buildSpo2Field: buildSpo2Field,
-    buildFilaFields: buildFilaFields
+    buildFilaFields: buildFilaFields,
+    formatTaDigits: formatTaDigits,
+    attachTaFormatter: attachTaFormatter,
+    buildTaInput: buildTaInput
   };
 })();

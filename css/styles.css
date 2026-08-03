@@ -161,26 +161,37 @@ h3 { font-size: 1rem; color: var(--color-text-mute); margin-top: 1.4em; }
   color: var(--color-text-mute);
   font-weight: 600;
 }
-.form input[type="text"],
-.form input[type="number"],
-.form input[type="date"],
-.form input[type="search"],
-.form select,
-.form textarea {
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="search"],
+input[type="email"],
+select {
   font-size: 1.05rem;
-  font-weight: 400;
+  font-weight: 500;
+  font-family: inherit;
   color: var(--color-text);
-  padding: 0.65em 0.7em;
+  padding: 0.75em 0.9em;
   border-radius: var(--radius-sm);
-  border: 1.5px solid var(--color-border);
-  background: #fff;
+  border: 1.5px solid transparent;
+  background: var(--color-bg);
   min-height: var(--tap);
   width: 100%;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.form input:focus, .form select:focus, .form textarea:focus {
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="search"]:focus,
+input[type="email"]:focus,
+select:focus,
+textarea:focus {
   outline: none;
+  background: #fff;
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--color-primary-light);
 }
+input::placeholder, textarea::placeholder { color: #9aa8aa; }
 .field-row { display: flex; gap: 0.7rem; }
 .field-row > label { flex: 1; }
 .hint { font-size: 0.85rem; color: var(--color-text-mute); margin: -0.3rem 0 0; }
@@ -238,8 +249,8 @@ h3 { font-size: 1rem; color: var(--color-text-mute); margin-top: 1.4em; }
 .spo2-field input { flex: 1; min-width: 0; }
 .chip {
   flex-shrink: 0;
-  border: 1.5px solid var(--color-border);
-  background: #fff;
+  border: 1.5px solid transparent;
+  background: var(--color-bg);
   color: var(--color-text-mute);
   border-radius: var(--radius-sm);
   padding: 0 0.8em;
@@ -247,6 +258,7 @@ h3 { font-size: 1rem; color: var(--color-text-mute); margin-top: 1.4em; }
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 .chip.selected { background: var(--color-danger-light); border-color: var(--color-danger); color: var(--color-danger); }
 .field-unset input { color: var(--color-text-mute); font-style: italic; }
@@ -258,13 +270,15 @@ h3 { font-size: 1rem; color: var(--color-text-mute); margin-top: 1.4em; }
 
 textarea {
   font: inherit;
+  font-size: 1.05rem;
   width: 100%;
-  padding: 0.6em 0.7em;
+  padding: 0.75em 0.9em;
   border-radius: var(--radius-sm);
-  border: 1.5px solid var(--color-border);
-  background: #fff;
+  border: 1.5px solid transparent;
+  background: var(--color-bg);
   color: var(--color-text);
   resize: vertical;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .checkbox-label {
   display: flex;
@@ -291,16 +305,20 @@ textarea {
   transition: stroke-dashoffset 0.3s linear;
 }
 .timer-display {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 2.6rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--color-primary-dark);
   letter-spacing: 0.02em;
+  text-align: center;
+}
+/* Dentro del anillo circular (pantalla de la prueba) el número va superpuesto y centrado */
+.timer-ring-wrap .timer-display {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .timer-controls { display: flex; gap: 0.6rem; justify-content: center; margin-top: 0.9rem; }
 .lap-btn { margin: 0.6rem 0 0.4rem; }
@@ -359,40 +377,6 @@ textarea {
 }
 .parada-review-row:first-child { border-top: none; padding-top: 0; }
 .sub-label { font-size: 0.78rem; font-weight: 700; color: var(--color-text-mute); margin: 0 0 0.3rem; text-transform: uppercase; letter-spacing: 0.03em; }
-
-/* Bluetooth live badge / hints */
-.ble-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  justify-content: center;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--color-text-mute);
-  background: #fff;
-  border: 1.5px solid var(--color-border);
-  border-radius: 999px;
-  padding: 0.4em 0.9em;
-  margin: 0 0 0.7rem;
-}
-.ble-badge .dot { width: 0.6em; height: 0.6em; border-radius: 50%; background: var(--color-border); flex-shrink: 0; }
-.ble-badge.live { color: var(--color-ok); border-color: var(--color-ok); }
-.ble-badge.live .dot { background: var(--color-ok); box-shadow: 0 0 0 3px var(--color-ok-light); }
-.ble-hint {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  background: var(--color-ok-light);
-  border: 1.5px solid var(--color-ok);
-  border-radius: var(--radius-sm);
-  padding: 0.5em 0.7em;
-  margin: -0.2rem 0 0.4rem;
-  font-size: 0.85rem;
-  color: var(--color-ok);
-  font-weight: 700;
-}
-.ble-hint button { flex-shrink: 0; }
 
 /* Cards (recovery, etc.) */
 .card {

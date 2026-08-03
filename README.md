@@ -13,7 +13,6 @@ css/styles.css  estilos + estilos de impresión del informe
 js/storage.js   guardado en el celular (localStorage) + forma de los datos de un test
 js/calc.js      fórmulas clínicas (metros predichos, FC máxima, TA, conclusión, validaciones)
 js/ui.js        navegación entre pantallas, stepper, componentes de carga reutilizables
-js/ble.js       conexión Bluetooth al oxímetro (experimental, ver más abajo)
 js/logo.js      logo del Sanatorio Finochietto embebido (usado en informe y PDF)
 js/pdf.js       genera el PDF real del informe (jsPDF)
 js/google.js    login con Google, envío por Gmail y guardado en Drive
@@ -23,7 +22,7 @@ js/test.js      cronómetro de la caminata, vueltas, paradas, carga minuto a min
 js/recovery.js  cronómetro de recuperación
 js/review.js    revisión/edición de todo antes de generar el informe
 js/report.js    informe final, PDF, mail, impresión y guardado
-js/settings.js  ajustes (datos del médico, metros por vuelta, Bluetooth, Google, backup)
+js/settings.js  ajustes (datos del médico, metros por vuelta, Google, backup)
 js/main.js      arranque de la app
 manifest.json   configuración de instalación como app (PWA)
 sw.js           permite que funcione sin internet
@@ -48,10 +47,17 @@ icons/          ícono de la app
 ## Funciones nuevas
 
 - **Parada del paciente**: en la pantalla de la prueba, el botón "El paciente se detiene"
-  registra el momento (el cronómetro sigue corriendo, como indica el protocolo) y pide el Borg
-  de disnea y de MMII en ese instante; "El paciente retoma la marcha" cierra esa parada. Se
+  registra el momento (el cronómetro sigue corriendo, como indica el protocolo) y pide SpO2,
+  FC y Borg de disnea/MMII en ese instante; "El paciente retoma la marcha" cierra esa parada. Se
   puede repetir varias veces y cada una queda en el informe: *"Detiene la caminata en el
-  minuto X por disnea de Y y de MMII de Z. Retoma en el minuto W."*
+  minuto X con SpO2 Y% y FC Z lpm, por disnea de A y de MMII de B. Retoma en el minuto W."*
+- **La recuperación arranca sola a los 6:00 reales** de caminata, no cuando se termina de
+  cargar el dato del minuto 6 — si tarda un rato en cargarse, el cronómetro de recuperación ya
+  viene corriendo por detrás y se ve avanzado al entrar a esa pantalla.
+- **TA con formato automático**: al escribir la tensión arterial, la "/" se inserta sola
+  (ej. escribir `120` la completa a `120/` lista para seguir con la diastólica; si el primer
+  número empieza con 8 o 9 hace el corte a los 2 dígitos, ej. `80/`). Lógica en
+  `TM6M.ui.formatTaDigits` (`js/ui.js`).
 - **Respuesta de TA automática**: se calcula sola comparando TA inicial y final (según el
   criterio de suba de la sistólica) y aparece en el informe como "Respuesta de TA adecuada" o
   "aplanada". Si falta alguna TA, no se informa nada.
@@ -71,22 +77,15 @@ propia cuenta de Google. Si se borran los datos del navegador o se cambia de cel
 el historial — por eso en Ajustes hay un botón "Exportar copia (JSON)" para guardar un backup
 de tanto en tanto, y "Importar copia" para restaurarlo.
 
-## Oxímetro por Bluetooth (experimental)
+## Oxímetro: carga 100% manual
 
-La app puede intentar conectarse directo al oxímetro por Bluetooth (Ajustes → "Conectar
-oxímetro") usando el perfil estándar de oximetría de Bluetooth (BLE). Esto **no pasa por la
-app ViHealth** — conectarse a otra app instalada no es posible, así que la app habla directo
-con el sensor por su cuenta.
-
-**Con el Vibeat PO6B esto probablemente no va a funcionar.** Al probarlo no aparece en la
-lista ni con "mostrar todos los dispositivos" activado, lo que indica que el sensor usa
-Bluetooth clásico (SPP) y no Bluetooth de baja energía (BLE). Web Bluetooth —lo único que un
-navegador puede usar— **solo ve dispositivos BLE**, nunca Bluetooth clásico; esto no es algo
-que se pueda arreglar con código, es una limitación de la plataforma web en general (no solo
-de esta app). Antes de descartarlo del todo, vale la pena cerrar ViHealth y desemparejar el
-oxímetro en los ajustes de Bluetooth del Android, después reintentar — pero si sigue sin
-aparecer, la carga manual (rápida, con botones grandes) es el camino, y es la que usa la app
-por defecto siempre.
+Se probó la conexión directa por Bluetooth (Web Bluetooth / BLE) con el oxímetro Vibeat PO6B
+y no funciona — el dispositivo no aparece ni con "mostrar todos los dispositivos" activado, lo
+que indica que usa Bluetooth clásico (SPP) en vez de BLE, y un navegador solo puede ver
+dispositivos BLE. Eso no se puede arreglar con código: es una limitación de la plataforma web
+en general, no de esta app. Por eso se sacó esa función por completo — la app no pide ninguna
+conexión, todo el ingreso de SpO2 y FC es manual (con el botón "Sin señal" para dejar el campo
+vacío cuando el oxímetro no logra tomar la lectura).
 
 ## Enviar por mail y guardar en Drive
 
@@ -132,9 +131,9 @@ Google al tocar "Conectar con Google".
 
 ## Instalar en el Android
 
-Para que quede instalada como una app real (ícono en el inicio, funciona sin internet, y para
-que el Bluetooth pueda funcionar) hace falta que estos archivos estén publicados en una URL
-https. La opción más simple y sin costo es GitHub Pages. Una vez publicada:
+Para que quede instalada como una app real (ícono en el inicio, funciona sin internet) hace
+falta que estos archivos estén publicados en una URL https. La opción más simple y sin costo
+es GitHub Pages. Una vez publicada:
 
 1. Abrir la URL en Chrome del Android.
 2. Menú (⋮) → "Instalar app" o "Agregar a pantalla de inicio".

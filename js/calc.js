@@ -59,7 +59,11 @@ TM6M.calc = (function () {
   function buildParadaLines(paradas) {
     if (!paradas || !paradas.length) return [];
     return paradas.filter(function (p) { return isNum(p.inicioSec) && isNum(p.finSec); }).map(function (p) {
-      return 'Detiene la caminata en el minuto ' + fmtMinSec(p.inicioSec) + ' por disnea de ' + fmtOrDash(p.borgDisnea) +
+      var vitales = '';
+      if (isNum(p.spo2) || isNum(p.fc)) {
+        vitales = ' con SpO2 ' + fmtOrDash(p.spo2) + '% y FC ' + fmtOrDash(p.fc) + ' lpm,';
+      }
+      return 'Detiene la caminata en el minuto ' + fmtMinSec(p.inicioSec) + vitales + ' por disnea de ' + fmtOrDash(p.borgDisnea) +
         ' y de MMII de ' + fmtOrDash(p.borgMmii) + '. Retoma en el minuto ' + fmtMinSec(p.finSec) + '.';
     });
   }

@@ -2,7 +2,6 @@ window.TM6M = window.TM6M || {};
 
 TM6M.patient = (function () {
   function el(id) { return document.getElementById(id); }
-  var bleUnsub = false;
 
   function render() {
     var t = TM6M.state.current;
@@ -22,40 +21,11 @@ TM6M.patient = (function () {
 
     updateBmi();
     renderBasal();
-    renderBleHint();
-
-    if (!bleUnsub) {
-      bleUnsub = true;
-      TM6M.ble.onStatusChange(function () { renderBleHint(); });
-    }
   }
 
   function renderBasal() {
     var t = TM6M.state.current;
     TM6M.ui.buildFilaFields(el('p-basal-fields'), t.filas[0], { showMetros: false });
-  }
-
-  function renderBleHint() {
-    var box = el('p-ble-hint');
-    var st = TM6M.ble.getStatus();
-    var reading = TM6M.ble.freshReading();
-    if (!st.connected || !reading) { box.hidden = true; box.innerHTML = ''; return; }
-    box.hidden = false;
-    box.innerHTML = '';
-    var span = document.createElement('span');
-    span.textContent = 'En vivo: ' + (reading.spo2 !== null ? reading.spo2 + '%' : '—') + ' · ' + (reading.pr !== null ? reading.pr + ' lpm' : '—');
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'chip';
-    btn.textContent = 'Usar';
-    btn.addEventListener('click', function () {
-      var basal = TM6M.state.current.filas[0];
-      basal.spo2 = reading.spo2;
-      basal.fc = reading.pr;
-      renderBasal();
-    });
-    box.appendChild(span);
-    box.appendChild(btn);
   }
 
   function updateBmi() {
@@ -77,7 +47,7 @@ TM6M.patient = (function () {
     el('p-diagnostico').addEventListener('input', function () { TM6M.state.current.diagnostico = el('p-diagnostico').value; });
     el('p-tecnico').addEventListener('input', function () { TM6M.state.current.tecnico = el('p-tecnico').value; });
     el('p-fecha').addEventListener('input', function () { TM6M.state.current.fecha = el('p-fecha').value; });
-    el('p-ta-inicial').addEventListener('input', function () { TM6M.state.current.taInicial = el('p-ta-inicial').value; });
+    TM6M.ui.attachTaFormatter(el('p-ta-inicial'), function (v) { TM6M.state.current.taInicial = v; });
 
     el('patient-form').addEventListener('submit', function (e) {
       e.preventDefault();

@@ -1,6 +1,6 @@
 // Service worker cache-first: la app funciona sin internet una vez instalada.
 // Al cambiar de versión (nombre de CACHE_NAME) se vuelve a descargar todo.
-var CACHE_NAME = 'tm6m-v3';
+var CACHE_NAME = 'tm6m-v4';
 var CORE_FILES = [
   './',
   './index.html',
@@ -9,7 +9,6 @@ var CORE_FILES = [
   './js/storage.js',
   './js/calc.js',
   './js/ui.js',
-  './js/ble.js',
   './js/logo.js',
   './js/pdf.js',
   './js/google.js',
@@ -22,7 +21,8 @@ var CORE_FILES = [
   './js/settings.js',
   './js/main.js',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './assets/logo-sanatorio.jpg'
 ];
 
 self.addEventListener('install', function (event) {

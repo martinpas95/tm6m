@@ -78,7 +78,6 @@
 
       <div class="basal-block">
         <p class="section-label">Basal (antes de caminar)</p>
-        <div id="p-ble-hint" class="ble-hint" hidden></div>
         <div id="p-basal-fields"></div>
       </div>
 
@@ -99,7 +98,6 @@
         <button id="btn-test-finish" class="btn btn-warning">Finalizar antes de tiempo</button>
       </div>
     </div>
-    <div id="test-ble-badge" class="ble-badge" hidden></div>
 
     <button id="btn-test-parada" class="btn btn-secondary btn-block btn-lg">&#9208; El paciente se detiene</button>
     <div id="test-parada-box" class="card" hidden></div>
@@ -121,7 +119,6 @@
       <label>FC al minuto de finalizar
         <input type="number" id="r-fc-1min" inputmode="numeric" placeholder="lpm">
       </label>
-      <div id="r-ble-hint" class="ble-hint" hidden></div>
     </div>
 
     <div class="card">
@@ -211,14 +208,6 @@
       <button id="btn-google-disconnect" class="btn btn-danger btn-block" hidden>Desconectar de Google</button>
     </div>
     <hr>
-    <div class="settings-ble">
-      <p class="section-label">Ox&iacute;metro Bluetooth</p>
-      <p class="hint">Conexi&oacute;n directa y experimental al sensor (no pasa por la app ViHealth, eso no es posible entre apps). Solo funciona si tu ox&iacute;metro implementa el perfil Bluetooth est&aacute;ndar de oximetr&iacute;a &mdash; muchos ox&iacute;metros econ&oacute;micos usan un protocolo propio y en ese caso no va a poder conectar. La carga manual funciona siempre, se use o no el Bluetooth.</p>
-      <div id="ble-status" class="status-text">Verificando compatibilidad&hellip;</div>
-      <button id="btn-ble-connect" class="btn btn-secondary btn-block">Conectar ox&iacute;metro</button>
-      <button id="btn-ble-disconnect" class="btn btn-danger btn-block" hidden>Desconectar</button>
-    </div>
-    <hr>
     <div class="settings-backup">
       <p class="section-label">Copia de seguridad</p>
       <p class="hint">Los datos viven solo en este celular. Export&aacute; una copia de tanto en tanto por si se resetea el tel&eacute;fono.</p>
@@ -239,7 +228,6 @@
 <script src="js/storage.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/ui.js"></script>
-<script src="js/ble.js"></script>
 <script src="js/logo.js"></script>
 <script src="js/pdf.js"></script>
 <script src="js/google.js"></script>

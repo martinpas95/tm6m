@@ -9,8 +9,6 @@ TM6M.test = (function () {
   var openRow = null;
   var openRowCtrl = null;
   var manualMetros = {};
-  var bleLocked = {};
-  var bleWired = false;
   var detenido = false;
 
   function getElapsedMs() { return Date.now() - startedAt; }
@@ -20,7 +18,6 @@ TM6M.test = (function () {
     t.vueltas = [];
     t.paradas = [];
     manualMetros = {};
-    bleLocked = {};
     openRow = null;
     openRowCtrl = null;
     notifiedBoundary = {};
@@ -36,12 +33,6 @@ TM6M.test = (function () {
     TM6M.ui.setLeaveGuard('test', function () {
       return confirm('¿Salir de la prueba en curso? El cronómetro se detendrá.');
     });
-
-    if (!bleWired) {
-      bleWired = true;
-      TM6M.ble.onStatusChange(updateBleBadge);
-      TM6M.ble.onReading(handleBleReading);
-    }
 
     render();
     TM6M.ui.showView('test');
@@ -91,11 +82,6 @@ TM6M.test = (function () {
         var fila = t.filas[m];
         if (!fila.completado) {
           openRow = m;
-          var fresh = TM6M.ble.freshReading();
-          if (fresh && !bleLocked[m]) {
-            fila.spo2 = fresh.spo2;
-            fila.fc = fresh.pr;
-          }
           TM6M.ui.vibrate([80, 60, 80]);
           TM6M.ui.toast('Minuto ' + m + ': cargar SpO2, FC y Borg');
         }
@@ -112,37 +98,15 @@ TM6M.test = (function () {
     ring.style.strokeDashoffset = String(circumference * (1 - pct));
   }
 
-  function handleBleReading(reading) {
-    updateBleBadge();
-    if (openRow && openRowCtrl) {
-      var fila = TM6M.state.current.filas[openRow];
-      if (!fila.completado && !bleLocked[openRow]) {
-        openRowCtrl.setSpo2(reading.spo2);
-        openRowCtrl.setFc(reading.pr);
-      }
-    }
-  }
-
-  function updateBleBadge() {
-    var badge = el('test-ble-badge');
-    if (!badge) return;
-    var st = TM6M.ble.getStatus();
-    var reading = TM6M.ble.freshReading();
-    if (!st.connected) { badge.hidden = true; return; }
-    badge.hidden = false;
-    badge.classList.toggle('live', !!reading);
-    var dot = '<span class="dot"></span>';
-    var text = reading
-      ? ('SpO2 ' + (reading.spo2 !== null ? reading.spo2 + '%' : '—') + ' · FC ' + (reading.pr !== null ? reading.pr + ' lpm' : '—') + ' (en vivo)')
-      : ('Conectado a ' + (st.deviceName || 'oxímetro') + '…');
-    badge.innerHTML = dot + '<span>' + text + '</span>';
-  }
-
   function finishWalk() {
     clearInterval(timerInterval);
     TM6M.ui.setLeaveGuard('test', null);
     TM6M.ui.toast('Caminata finalizada, iniciando recuperación');
-    TM6M.recovery.start();
+    // La recuperación arranca en el instante real en que se cumplieron los 6:00 de
+    // caminata (aunque falte cargar el minuto 6), no cuando se termina de cargar el dato.
+    // Si se finalizó antes de tiempo, arranca ahora mismo.
+    var recoveryStart = Math.min(Date.now(), startedAt + 360000);
+    TM6M.recovery.start(recoveryStart);
   }
 
   // --- Parada del paciente (el cronómetro sigue corriendo) ---
@@ -151,7 +115,7 @@ TM6M.test = (function () {
     var t = TM6M.state.current;
     if (!detenido) {
       detenido = true;
-      t.paradas.push({ inicioSec: Math.floor(getElapsedMs() / 1000), finSec: null, borgDisnea: null, borgMmii: null });
+      t.paradas.push({ inicioSec: Math.floor(getElapsedMs() / 1000), finSec: null, spo2: null, fc: null, borgDisnea: null, borgMmii: null });
       TM6M.ui.vibrate(50);
     } else {
       var actual = t.paradas[t.paradas.length - 1];
@@ -180,6 +144,12 @@ TM6M.test = (function () {
       hint.className = 'hint';
       hint.textContent = 'Se detuvo en el minuto ' + TM6M.calc.fmtMinSec(actual.inicioSec) + '. Cargá cómo estaba en ese momento:';
       box.appendChild(hint);
+      box.appendChild(TM6M.ui.fieldBlock('SpO2 %', function (b) {
+        TM6M.ui.buildSpo2Field(b, actual.spo2, function (v) { actual.spo2 = v; });
+      }));
+      box.appendChild(TM6M.ui.fieldBlock('FC (lpm)', function (b) {
+        TM6M.ui.buildNumberInput(b, actual.fc, function (v) { actual.fc = v; });
+      }));
       box.appendChild(TM6M.ui.fieldBlock('Borg disnea', function (b) {
         TM6M.ui.buildBorgSelector(b, actual.borgDisnea, function (v) { actual.borgDisnea = v; });
       }));
@@ -195,8 +165,12 @@ TM6M.test = (function () {
     t.paradas.forEach(function (p, idx) {
       if (p.finSec === null) return;
       var li = document.createElement('li');
-      li.textContent = 'Parada ' + (idx + 1) + ': ' + TM6M.calc.fmtMinSec(p.inicioSec) + '–' + TM6M.calc.fmtMinSec(p.finSec) +
-        ' · Borg disnea ' + (TM6M.calc.isNum(p.borgDisnea) ? p.borgDisnea : '—') + ' · MMII ' + (TM6M.calc.isNum(p.borgMmii) ? p.borgMmii : '—');
+      var parts = [TM6M.calc.fmtMinSec(p.inicioSec) + '–' + TM6M.calc.fmtMinSec(p.finSec)];
+      if (TM6M.calc.isNum(p.spo2)) parts.push('SpO2 ' + p.spo2 + '%');
+      if (TM6M.calc.isNum(p.fc)) parts.push('FC ' + p.fc + ' lpm');
+      parts.push('Borg disnea ' + (TM6M.calc.isNum(p.borgDisnea) ? p.borgDisnea : '—'));
+      parts.push('MMII ' + (TM6M.calc.isNum(p.borgMmii) ? p.borgMmii : '—'));
+      li.textContent = 'Parada ' + (idx + 1) + ': ' + parts.join(' · ');
       list.appendChild(li);
     });
   }
@@ -237,9 +211,7 @@ TM6M.test = (function () {
         body.className = 'minute-row-body';
         if (openRow === i) {
           var ctrl = TM6M.ui.buildFilaFields(body, fila, {
-            onManualMetros: function () { manualMetros[i] = true; },
-            onManualSpo2: function () { bleLocked[i] = true; },
-            onManualFc: function () { bleLocked[i] = true; }
+            onManualMetros: function () { manualMetros[i] = true; }
           });
           openRowCtrl = ctrl;
 
@@ -267,7 +239,6 @@ TM6M.test = (function () {
     el('test-timer').textContent = TM6M.ui.fmtTime(getElapsedMs());
     el('lap-meters').textContent = t.metrosPorVuelta;
     updateMetersUI();
-    updateBleBadge();
     updateTimerRing(getElapsedMs());
     renderRows();
     renderParadas();
