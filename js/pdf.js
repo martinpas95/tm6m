@@ -155,6 +155,7 @@ TM6M.pdfgen = (function () {
     r.conclusionLines.forEach(function (l) { paragraph(l, 10); });
     r.paradaLines.forEach(function (l) { paragraph(l, 10); });
     if (r.terminoAnticipadoLine) paragraph(r.terminoAnticipadoLine, 10);
+    if (r.desaturacionLine) paragraph(r.desaturacionLine, 10);
     if (r.taResp) paragraph('Respuesta de TA ' + (r.taResp === 'adecuada' ? 'adecuada' : 'aplanada') + '.', 10);
     if (t.notas.hipertensivos) paragraph('Se registran registros hipertensivos, se sugiere su control.', 10);
     if (t.notas.dificultadSensado) {

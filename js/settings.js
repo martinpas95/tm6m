@@ -12,7 +12,26 @@ TM6M.settings = (function () {
     el('s-metros-vuelta').value = s.metrosPorVuelta;
     el('s-google-client-id').value = s.googleClientId || '';
     el('s-remitente').value = s.remitenteNombre || '';
+    el('app-version-hint').textContent = 'Versión instalada: ' + TM6M.APP_VERSION;
     renderGoogleStatus();
+  }
+
+  function forceUpdate() {
+    if (!confirm('Esto va a borrar los archivos guardados en el celular para funcionar sin internet y volver a descargarlos. Los pacientes guardados NO se pierden. ¿Continuar?')) return;
+    var tasks = [];
+    if ('serviceWorker' in navigator) {
+      tasks.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+        return Promise.all(regs.map(function (r) { return r.unregister(); }));
+      }));
+    }
+    if ('caches' in window) {
+      tasks.push(caches.keys().then(function (keys) {
+        return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+      }));
+    }
+    Promise.all(tasks).then(function () {
+      location.reload();
+    });
   }
 
   function renderGoogleStatus() {
@@ -42,6 +61,7 @@ TM6M.settings = (function () {
   }
 
   function init() {
+    el('btn-force-update').addEventListener('click', forceUpdate);
     el('settings-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var s = {

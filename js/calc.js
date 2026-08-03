@@ -92,6 +92,17 @@ TM6M.calc = (function () {
     return deltaSys < 10 ? 'aplanada' : 'adecuada';
   }
 
+  // Desaturación significativa: caída de SpO2 >= 4 puntos entre el basal y el mínimo
+  // registrado durante la caminata (minutos 1 a 6).
+  function checkDesaturacion(filas) {
+    var basal = filas[0] ? filas[0].spo2 : null;
+    var durante = filas.slice(1).map(function (f) { return f.spo2; }).filter(isNum);
+    if (!isNum(basal) || !durante.length) return null;
+    var minDurante = Math.min.apply(null, durante);
+    var caida = basal - minDurante;
+    return { significativa: caida >= 4, caida: caida, basal: basal, minDurante: minDurante };
+  }
+
   var LIMITES = {
     edadMin: 1, edadMax: 120,
     pesoMin: 20, pesoMax: 300,
@@ -140,6 +151,14 @@ TM6M.calc = (function () {
     return lines;
   }
 
+  function buildDesaturacionLine(desat) {
+    if (!desat) return null;
+    if (desat.significativa) {
+      return 'Presenta desaturación significativa (caída de SpO2 de ' + Math.round(desat.caida) + ' puntos: de ' + desat.basal + '% a ' + desat.minDurante + '%).';
+    }
+    return 'No presenta desaturación significativa durante la prueba.';
+  }
+
   function computeReport(t) {
     var metrosTot = metrosTotales(t.filas);
     var metrosPred = metrosPredichos(t.sexo, Number(t.talla), Number(t.edad), Number(t.peso));
@@ -170,7 +189,8 @@ TM6M.calc = (function () {
       conclusionLines: conclusionLines,
       paradaLines: buildParadaLines(t.paradas),
       terminoAnticipadoLine: buildTerminoAnticipadoLine(t.terminoAnticipado),
-      taResp: classifyTaResponse(t.taInicial, t.taFinal)
+      taResp: classifyTaResponse(t.taInicial, t.taFinal),
+      desaturacionLine: buildDesaturacionLine(checkDesaturacion(t.filas))
     };
   }
 
@@ -190,6 +210,8 @@ TM6M.calc = (function () {
     parseTa: parseTa,
     classifyTaResponse: classifyTaResponse,
     validatePatientBasics: validatePatientBasics,
+    checkDesaturacion: checkDesaturacion,
+    buildDesaturacionLine: buildDesaturacionLine,
     LIMITES: LIMITES,
     computeReport: computeReport
   };

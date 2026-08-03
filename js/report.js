@@ -137,6 +137,11 @@ TM6M.report = (function () {
       pTermino.textContent = r.terminoAnticipadoLine;
       conclusion.appendChild(pTermino);
     }
+    if (r.desaturacionLine) {
+      var pDesat = document.createElement('p');
+      pDesat.textContent = r.desaturacionLine;
+      conclusion.appendChild(pDesat);
+    }
     if (taResp) {
       var pTa = document.createElement('p');
       pTa.textContent = 'Respuesta de TA ' + (taResp === 'adecuada' ? 'adecuada' : 'aplanada') + '.';
