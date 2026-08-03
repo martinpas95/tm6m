@@ -1,7 +1,20 @@
 window.TM6M = window.TM6M || {};
 
 // Genera un PDF real (no depende de window.print()) para poder adjuntarlo por mail o subirlo a Drive.
+// Diseño tipo informe clínico profesional, A4, con paginación defensiva por si el contenido
+// (paradas, notas, observaciones) no entra en una sola página.
 TM6M.pdfgen = (function () {
+  var PRIMARY = [11, 110, 120];
+  var PRIMARY_DARK = [7, 62, 71];
+  var PRIMARY_LIGHT = [228, 241, 243];
+  var ACCENT = [23, 167, 152];
+  var WARN = [188, 96, 27];
+  var TEXT = [22, 37, 42];
+  var GRAY = [117, 130, 133];
+  var LIGHT_GRAY = [214, 224, 225];
+  var TILE_BORDER = [203, 221, 223];
+  var TILE_FILL = [246, 251, 251];
+
   function fmt(v, suffix) {
     if (v === null || v === undefined || v === '' || (typeof v === 'number' && isNaN(v))) return '—';
     return suffix ? (v + ' ' + suffix) : String(v);
@@ -12,7 +25,12 @@ TM6M.pdfgen = (function () {
     var p = iso.split('-');
     return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : iso;
   }
-  function fmtCell(v) { return (v === null || v === undefined) ? '' : String(v); }
+  function fmtDateTime(d) {
+    function pad(n) { return String(n).padStart(2, '0'); }
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function fmtCell(v) { return (v === null || v === undefined || v === '') ? '—' : String(v); }
+  function tileValue(v, unit) { return (v === null || v === undefined) ? '—' : (v + (unit ? (' ' + unit) : '')); }
 
   function build(t, settings) {
     var c = TM6M.calc;
@@ -22,165 +40,334 @@ TM6M.pdfgen = (function () {
 
     var doc = new jsPDFCtor({ unit: 'mm', format: 'a4' });
     var pageW = doc.internal.pageSize.getWidth();
+    var pageH = doc.internal.pageSize.getHeight();
     var marginX = 16;
-    var y = 18;
+    var marginTop = 14;
+    var marginBottom = 11;
     var contentW = pageW - marginX * 2;
+    var y = 0;
 
-    function center(text, size, bold) {
-      doc.setFont('helvetica', bold ? 'bold' : 'normal');
-      doc.setFontSize(size);
-      doc.text(text, pageW / 2, y, { align: 'center' });
-      y += size * 0.5;
+    function setText(col) { doc.setTextColor(col[0], col[1], col[2]); }
+    function setFill(col) { doc.setFillColor(col[0], col[1], col[2]); }
+    function setDraw(col) { doc.setDrawColor(col[0], col[1], col[2]); }
+
+    function ensureSpace(h) {
+      if (y + h > pageH - marginBottom) {
+        doc.addPage();
+        y = marginTop;
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(8.5);
+        setText(GRAY);
+        doc.text('Test de Marcha de 6 Minutos — ' + (t.paciente || 'paciente') + ' (continuación)', marginX, y);
+        setText(TEXT);
+        y += 7;
+      }
     }
-    function line(y1) {
-      doc.setDrawColor(180);
-      doc.line(marginX, y1, pageW - marginX, y1);
+
+    function sectionHeading(text) {
+      ensureSpace(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.3);
+      setText(PRIMARY);
+      doc.text(text.toUpperCase(), marginX, y);
+      y += 1.5;
+      setDraw(ACCENT);
+      doc.setLineWidth(0.9);
+      doc.line(marginX, y, marginX + 16, y);
+      doc.setLineWidth(0.2);
+      setText(TEXT);
+      y += 4.4;
     }
-    function paragraph(text, size) {
+
+    function fieldRowMulti(fields) {
+      var colW = contentW / fields.length;
+      fields.forEach(function (f, idx) {
+        var x = marginX + idx * colW;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.3);
+        setText(GRAY);
+        doc.text(f[0].toUpperCase(), x, y);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10.5);
+        setText(TEXT);
+        doc.text(fmt(f[1]), x, y + 4.8);
+      });
+      setText(TEXT);
+      y += 8.6;
+    }
+
+    function fieldRowFull(label, value, size) {
+      size = size || 10.5;
+      ensureSpace(12);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(size || 10);
-      var lines = doc.splitTextToSize(text, contentW);
-      doc.text(lines, marginX, y);
-      y += lines.length * (size || 10) * 0.42 + 1.5;
+      doc.setFontSize(7.3);
+      setText(GRAY);
+      doc.text(label.toUpperCase(), marginX, y);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(size);
+      setText(TEXT);
+      var lineH = size * 0.42 + 1;
+      var lines = doc.splitTextToSize(fmt(value), contentW);
+      doc.text(lines, marginX, y + 4.8);
+      setText(TEXT);
+      y += 4.8 + lines.length * lineH + 2;
     }
 
+    function bulletParagraph(text) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      var wrapW = contentW - 5;
+      var lines = doc.splitTextToSize(text, wrapW);
+      ensureSpace(lines.length * 4.2 + 1.8);
+      setFill(ACCENT);
+      doc.circle(marginX + 1, y - 1.3, 0.8, 'F');
+      setText(TEXT);
+      doc.text(lines, marginX + 5, y);
+      y += lines.length * 4.2 + 1.8;
+    }
+
+    // ---------- Encabezado ----------
+    var bandH = 22;
+    setFill(PRIMARY);
+    doc.rect(0, 0, pageW, bandH, 'F');
+    setFill(ACCENT);
+    doc.rect(0, bandH, pageW, 1.2, 'F');
+
+    var logoSize = 16;
+    var logoX = marginX;
+    var logoY = 3;
+    var textX = marginX;
     if (window.TM6M.LOGO_DATA_URI) {
       try {
-        var logoSize = 34;
-        doc.addImage(TM6M.LOGO_DATA_URI, 'JPEG', pageW / 2 - logoSize / 2, y - 8, logoSize, logoSize);
-        y += logoSize - 12;
+        setFill([255, 255, 255]);
+        doc.roundedRect(logoX - 1, logoY - 1, logoSize + 2, logoSize + 2, 1.4, 1.4, 'F');
+        doc.addImage(TM6M.LOGO_DATA_URI, 'JPEG', logoX, logoY, logoSize, logoSize);
+        textX = marginX + logoSize + 7;
       } catch (e) { /* si falla el logo, el informe se genera igual sin él */ }
     }
 
-    center('TEST DE MARCHA DE 6 MINUTOS', 15, true);
-    y += 1;
-    center(settings.medico + (settings.especialidad ? (' - ' + settings.especialidad) : ''), 11, false);
-    y += 1;
-    center(settings.matricula, 9, false);
-    y += 3;
-    line(y);
-    y += 6;
-
-    var bmiVal = r.bmi ? r.bmi.toFixed(1) : '—';
-    var fieldPairs = [
-      ['Fecha', fmtDate(t.fecha)], ['Paciente', t.paciente || '—'],
-      ['Edad', fmt(t.edad)], ['Sexo', t.sexo],
-      ['Peso', fmt(t.peso, 'kg')], ['Talla', fmt(t.talla, 'cm')],
-      ['BMI', bmiVal], ['Técnico', t.tecnico || '—']
-    ];
-    doc.setFontSize(10);
-    var colW = contentW / 2;
-    for (var i = 0; i < fieldPairs.length; i += 2) {
-      var rowY = y;
-      drawField(fieldPairs[i][0], fieldPairs[i][1], marginX, rowY, colW);
-      if (fieldPairs[i + 1]) drawField(fieldPairs[i + 1][0], fieldPairs[i + 1][1], marginX + colW, rowY, colW);
-      y += 5.5;
-    }
-    drawField('Diagnóstico', t.diagnostico || '—', marginX, y, contentW);
-    y += 8;
-
-    function drawField(label, value, x, yy, w) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      var labelText = label + ':';
-      doc.text(labelText, x, yy);
-      doc.setFont('helvetica', 'normal');
-      var labelW = doc.getTextWidth(labelText) + 1.5;
-      doc.text(String(value), x + labelW, yy, { maxWidth: w - labelW });
-    }
-
-    // Tabla minuto a minuto
-    var headers = ['Minuto', 'SpO2%', 'FC', 'Metros', 'Borg Disnea', 'Borg MMII'];
-    var colWidths = [22, 22, 22, 24, 32, 32];
-    var tableX = marginX;
-    var rowH = 6.5;
-    doc.setFontSize(9);
+    setText([255, 255, 255]);
     doc.setFont('helvetica', 'bold');
-    doc.setFillColor(228, 241, 243);
-    doc.rect(tableX, y, colWidths.reduce(function (a, b) { return a + b; }, 0), rowH, 'F');
+    doc.setFontSize(13.5);
+    doc.text('TEST DE MARCHA DE 6 MINUTOS', textX, 12.5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.8);
+    doc.text(settings.medico || '', pageW - marginX, 9.5, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    if (settings.especialidad) doc.text(settings.especialidad, pageW - marginX, 14, { align: 'right' });
+    doc.text(settings.matricula || '', pageW - marginX, 18.2, { align: 'right' });
+    setText(TEXT);
+
+    y = bandH + 5;
+
+    // ---------- Datos del paciente ----------
+    sectionHeading('Datos del paciente');
+    fieldRowFull('Paciente', t.paciente, 13);
+    fieldRowMulti([['Fecha', fmtDate(t.fecha)], ['Edad', fmt(t.edad, 'años')], ['Sexo', t.sexo === 'M' ? 'Masculino' : 'Femenino']]);
+    fieldRowMulti([['Peso', fmt(t.peso, 'kg')], ['Talla', fmt(t.talla, 'cm')], ['BMI', r.bmi ? r.bmi.toFixed(1) : '—']]);
+    fieldRowFull('Técnico', t.tecnico);
+    fieldRowFull('Diagnóstico', t.diagnostico);
+    y += 1.5;
+    setDraw(LIGHT_GRAY);
+    doc.setLineWidth(0.3);
+    doc.line(marginX, y, pageW - marginX, y);
+    y += 6.5;
+
+    // ---------- Tabla minuto a minuto ----------
+    var headers = ['MINUTO', 'SpO2 %', 'FC (lpm)', 'METROS', 'BORG DISNEA', 'BORG MMII'];
+    var colWidths = [20, 26, 26, 26, 40, 40];
+    var headerH = 7;
+    var dataRowH = 6;
+    ensureSpace(headerH + dataRowH * t.filas.length + 6);
+    sectionHeading('Registro minuto a minuto');
+
+    var tableX = marginX;
+    var tableStartY = y;
+    setFill(PRIMARY);
+    doc.rect(tableX, y, contentW, headerH, 'F');
+    setText([255, 255, 255]);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.2);
     var cx = tableX;
     headers.forEach(function (h, idx) {
-      doc.text(h, cx + colWidths[idx] / 2, y + rowH / 2 + 1.3, { align: 'center' });
+      doc.text(h, cx + colWidths[idx] / 2, y + headerH / 2 + 1.3, { align: 'center' });
       cx += colWidths[idx];
     });
-    y += rowH;
+    y += headerH;
+    setText(TEXT);
 
-    doc.setFont('helvetica', 'normal');
-    t.filas.forEach(function (f) {
+    t.filas.forEach(function (f, idx) {
+      if (idx % 2 === 1) {
+        setFill(PRIMARY_LIGHT);
+        doc.rect(tableX, y, contentW, dataRowH, 'F');
+      }
       var label = f.minuto === 'Basal' ? 'Basal' : String(f.minuto);
       var vals = [label, fmtCell(f.spo2), fmtCell(f.fc), fmtCell(f.metros), fmtCell(f.borgDisnea), fmtCell(f.borgMmii)];
       cx = tableX;
-      vals.forEach(function (v, idx) {
-        doc.text(v, cx + colWidths[idx] / 2, y + rowH / 2 + 1.3, { align: 'center' });
-        cx += colWidths[idx];
+      vals.forEach(function (v, i2) {
+        doc.setFont('helvetica', i2 === 0 ? 'bold' : 'normal');
+        doc.setFontSize(8.8);
+        doc.text(v, cx + colWidths[i2] / 2, y + dataRowH / 2 + 1.3, { align: 'center' });
+        cx += colWidths[i2];
       });
-      y += rowH;
+      y += dataRowH;
     });
-    // borde de la tabla
-    doc.setDrawColor(150);
-    var tableTotalW = colWidths.reduce(function (a, b) { return a + b; }, 0);
-    var tableTop = y - rowH * (t.filas.length + 1);
-    doc.rect(tableX, tableTop, tableTotalW, rowH * (t.filas.length + 1));
+
+    var tableTotalH = headerH + dataRowH * t.filas.length;
+    setDraw(LIGHT_GRAY);
+    doc.setLineWidth(0.25);
+    doc.rect(tableX, tableStartY, contentW, tableTotalH);
+    doc.line(tableX, tableStartY + headerH, tableX + contentW, tableStartY + headerH);
     cx = tableX;
-    colWidths.forEach(function (w) { cx += w; doc.line(cx, tableTop, cx, y); });
-    for (var rIdx = 0; rIdx <= t.filas.length + 1; rIdx++) {
-      doc.line(tableX, tableTop + rIdx * rowH, tableX + tableTotalW, tableTop + rIdx * rowH);
-    }
-    y += 6;
+    colWidths.forEach(function (w) { cx += w; doc.line(cx, tableStartY, cx, tableStartY + tableTotalH); });
+    y += 6.5;
 
-    // Resultados
-    doc.setFillColor(228, 241, 243);
-    var resultsStartY = y;
-    var resultLines = [
-      ['TA inicial / final', (t.taInicial || '—') + ' / ' + (t.taFinal || '—')],
-      ['Total de metros recorridos', fmt(round1(r.metrosTot), 'm')],
-      ['Valores predichos', r.metrosPred ? (Math.round(r.metrosPred) + ' m') : '—'],
-      ['FC máxima alcanzada', fmt(r.fcMax, 'lpm')],
-      ['Saturación mínima', fmt(r.spo2Min, '%')],
-      ['Porcentaje FC predicha', fmt(r.pctFc, '%')],
-      ['Porcentaje metros predicho', c.isNum(r.pctMetros) ? (r.pctMetros.toFixed(1) + '%') : '—']
+    // ---------- Resultados ----------
+    var statRows = [
+      ['Metros recorridos', tileValue(c.isNum(r.metrosTot) ? round1(r.metrosTot) : null, 'm')],
+      ['Metros predichos (Enright & Sherrill)', tileValue(r.metrosPred ? Math.round(r.metrosPred) : null, 'm')],
+      ['Porcentaje del predicho', tileValue(c.isNum(r.pctMetros) ? r.pctMetros.toFixed(1) : null, '%')],
+      ['FC máxima alcanzada', tileValue(r.fcMax, 'lpm')],
+      ['Porcentaje FC predicha', tileValue(r.pctFc, '%')],
+      ['Saturación mínima', tileValue(r.spo2Min, '%')]
     ];
-    var boxH = resultLines.length * 5.2 + 4;
-    doc.rect(marginX, resultsStartY, contentW, boxH, 'F');
-    y = resultsStartY + 6;
-    resultLines.forEach(function (rl) {
+    var statRowH = 5.7;
+    var taRowH = 8.3;
+    var boxPad = 2.1;
+    var boxH = statRows.length * statRowH + taRowH + boxPad * 2;
+    ensureSpace(boxH + 10);
+    sectionHeading('Resultados');
+
+    var boxY = y;
+    setDraw(TILE_BORDER);
+    setFill(TILE_FILL);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(marginX, boxY, contentW, boxH, 2, 2, 'FD');
+    setFill(PRIMARY);
+    doc.rect(marginX, boxY, 2.2, boxH, 'F');
+
+    var ry = boxY + boxPad;
+    statRows.forEach(function (row, idx) {
+      if (idx % 2 === 1) {
+        setFill([255, 255, 255]);
+        doc.rect(marginX + 2.2, ry, contentW - 2.2, statRowH, 'F');
+      }
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9.5);
-      doc.text(rl[0], marginX + 2.5, y);
+      doc.setFontSize(9);
+      setText(TEXT);
+      doc.text(row[0], marginX + 7, ry + statRowH / 2 + 1.4);
       doc.setFont('helvetica', 'bold');
-      doc.text(String(rl[1]), pageW - marginX - 2.5, y, { align: 'right' });
-      y += 5.2;
+      doc.setFontSize(10.5);
+      setText(PRIMARY_DARK);
+      doc.text(row[1], marginX + contentW - 5, ry + statRowH / 2 + 1.4, { align: 'right' });
+      ry += statRowH;
     });
-    y = resultsStartY + boxH + 6;
 
-    r.conclusionLines.forEach(function (l) { paragraph(l, 10); });
-    r.paradaLines.forEach(function (l) { paragraph(l, 10); });
-    if (r.terminoAnticipadoLine) paragraph(r.terminoAnticipadoLine, 10);
-    if (r.desaturacionLine) paragraph(r.desaturacionLine, 10);
-    if (r.taResp) paragraph('Respuesta de TA ' + (r.taResp === 'adecuada' ? 'adecuada' : 'aplanada') + '.', 10);
-    if (t.notas.hipertensivos) paragraph('Se registran registros hipertensivos, se sugiere su control.', 10);
-    if (t.notas.dificultadSensado) {
-      paragraph('Se registraron dificultades técnicas para el sensado de SpO2 y FC durante la prueba' +
-        (t.notas.dificultadSensadoDetalle ? (' (' + t.notas.dificultadSensadoDetalle + ')') : '') + '.', 10);
+    setFill(PRIMARY_LIGHT);
+    doc.rect(marginX + 2.2, ry, contentW - 2.2, taRowH, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.6);
+    setText(GRAY);
+    doc.text('TENSIÓN ARTERIAL (inicial / final)', marginX + 7, ry + 3.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    setText(PRIMARY_DARK);
+    doc.text((t.taInicial || '—') + '   »   ' + (t.taFinal || '—'), marginX + 7, ry + 7);
+    if (r.taResp) {
+      var pillTxt = r.taResp === 'adecuada' ? 'Respuesta adecuada' : 'Respuesta aplanada';
+      var pillCol = r.taResp === 'adecuada' ? ACCENT : WARN;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      var pillW = doc.getTextWidth(pillTxt) + 7;
+      var pillH = 6;
+      var pillX = marginX + contentW - pillW - 4;
+      var pillY = ry + (taRowH - pillH) / 2;
+      setFill(pillCol);
+      doc.roundedRect(pillX, pillY, pillW, pillH, 3.2, 3.2, 'F');
+      setText([255, 255, 255]);
+      doc.text(pillTxt, pillX + pillW / 2, pillY + pillH / 2 + 1, { align: 'center' });
     }
-    if (t.notas.libre) paragraph(t.notas.libre, 10);
+    setText(TEXT);
+    y = boxY + boxH + 6;
 
-    y += 3;
+    // ---------- Conclusión ----------
+    sectionHeading('Conclusión');
+    r.conclusionLines.forEach(bulletParagraph);
+    if (r.desaturacionLine) bulletParagraph(r.desaturacionLine);
+
+    // ---------- Incidencias durante la prueba ----------
+    if (r.paradaLines.length || r.terminoAnticipadoLine) {
+      y += 2;
+      sectionHeading('Incidencias durante la prueba');
+      r.paradaLines.forEach(bulletParagraph);
+      if (r.terminoAnticipadoLine) bulletParagraph(r.terminoAnticipadoLine);
+    }
+
+    // ---------- Observaciones ----------
+    var obsLines = [];
+    if (t.notas.hipertensivos) obsLines.push('Se registran registros hipertensivos, se sugiere su control.');
+    if (t.notas.dificultadSensado) {
+      obsLines.push('Se registraron dificultades técnicas para el sensado de SpO2 y FC durante la prueba' +
+        (t.notas.dificultadSensadoDetalle ? (' (' + t.notas.dificultadSensadoDetalle + ')') : '') + '.');
+    }
+    if (t.notas.libre) obsLines.push(t.notas.libre);
+    if (obsLines.length) {
+      y += 2;
+      sectionHeading('Observaciones');
+      obsLines.forEach(bulletParagraph);
+    }
+
+    // ---------- Pie: nota metodológica y firma ----------
+    ensureSpace(23);
+    y += 1.5;
+    setDraw(LIGHT_GRAY);
+    doc.setLineWidth(0.3);
+    doc.line(marginX, y, pageW - marginX, y);
+    y += 4.5;
+
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(110);
+    doc.setFontSize(8.3);
+    setText(GRAY);
     var oxText = (t.oxigeno && t.oxigeno.suplementario)
       ? ('Estudio realizado con oxígeno suplementario' + (t.oxigeno.detalle ? (' (' + t.oxigeno.detalle + ')') : '') + '.')
       : 'Estudio realizado al aire ambiente (FiO2 0,21%).';
     doc.text(oxText, pageW / 2, y, { align: 'center' });
-    y += 4;
-    doc.text('AJRCCM 1998; 158: 1384-1387', pageW / 2, y, { align: 'center' });
-    doc.setTextColor(0);
+    y += 3.8;
+    doc.text('Enright PL, Sherrill DL. Am J Respir Crit Care Med. 1998; 158: 1384-1387.', pageW / 2, y, { align: 'center' });
+    setText(TEXT);
 
-    y += 12;
-    doc.setFont('helvetica', 'normal');
+    y += 3.5;
+    ensureSpace(14);
+    var sigLineW = 70;
+    var sigX = pageW / 2 - sigLineW / 2;
+    setDraw(GRAY);
+    doc.setLineWidth(0.3);
+    doc.line(sigX, y, sigX + sigLineW, y);
+    y += 4.6;
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text(settings.medico + ' — ' + settings.matricula, pageW / 2, y, { align: 'center' });
+    setText(TEXT);
+    doc.text(settings.medico || '', pageW / 2, y, { align: 'center' });
+    y += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.3);
+    setText(GRAY);
+    doc.text((settings.especialidad ? (settings.especialidad + ' — ') : '') + (settings.matricula || ''), pageW / 2, y, { align: 'center' });
+    setText(TEXT);
+
+    // ---------- Pie de página (todas las páginas) ----------
+    var totalPages = doc.internal.getNumberOfPages();
+    for (var p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.4);
+      setText(GRAY);
+      doc.text('Generado el ' + fmtDateTime(new Date()), marginX, pageH - 8);
+      doc.text('Página ' + p + ' de ' + totalPages, pageW - marginX, pageH - 8, { align: 'right' });
+      setText(TEXT);
+    }
 
     return doc;
   }

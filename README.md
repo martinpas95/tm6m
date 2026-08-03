@@ -5,6 +5,9 @@ reemplazar la planilla de Excel. Es una app web (PWA): no tiene build ni depende
 (usa jsPDF y Google Identity Services desde CDN para el PDF y el envío por mail), son archivos
 HTML/CSS/JS simples que se pueden editar directamente.
 
+> Para retomar este proyecto en una sesión nueva de Claude Code sin perder contexto (arquitectura,
+> decisiones tomadas, bugs conocidos, pendientes), leer primero [`PROJECT_STATE.md`](PROJECT_STATE.md).
+
 ## Estructura
 
 ```
@@ -51,6 +54,15 @@ icons/          ícono de la app
   FC y Borg de disnea/MMII en ese instante; "El paciente retoma la marcha" cierra esa parada. Se
   puede repetir varias veces y cada una queda en el informe: *"Detiene la caminata en el
   minuto X con SpO2 Y% y FC Z lpm, por disnea de A y de MMII de B. Retoma en el minuto W."*
+- **Finalizar antes de tiempo**: distinto de una parada — termina la prueba para siempre antes
+  de los 6:00, pidiendo SpO2/FC/Borg del momento. Queda en el informe como *"Se finaliza la
+  prueba en el minuto X con SpO2 de Y%, FC de Z, Borg de disnea A y Borg de MMII de B."*
+- **Vueltas y flechas de sentido de marcha**: el botón "Vuelta" suma los metros configurados
+  (15 m por defecto). El minuto 1 arranca con una vuelta ya acreditada sola (así si nunca se
+  toca el botón, el total no queda en 0 m). Al lado del cronómetro se ven flechas ↑/↓ que
+  alternan con cada toque real de "Vuelta", de forma continua a lo largo de toda la prueba (no
+  se reinician en cada minuto nuevo) — imitan el método en papel de anotar hacia dónde camina
+  el paciente en cada tramo del circuito.
 - **La recuperación arranca sola a los 6:00 reales** de caminata, no cuando se termina de
   cargar el dato del minuto 6 — si tarda un rato en cargarse, el cronómetro de recuperación ya
   viene corriendo por detrás y se ve avanzado al entrar a esa pantalla.
@@ -63,11 +75,29 @@ icons/          ícono de la app
   "aplanada". Si falta alguna TA, no se informa nada.
 - **Picos hipertensivos**: casillero manual en Revisión; si se marca, el informe agrega "Se
   registran registros hipertensivos, se sugiere su control."
+- **Dificultad de sensado**: casillero manual en Revisión (ej. esclerodactilia, uñas pintadas,
+  mala perfusión) con un detalle de texto libre opcional, para dejar aclarado en el informe por
+  qué algunas lecturas pueden no ser del todo confiables.
 - **Oxígeno suplementario**: por defecto el informe dice "aire ambiente (FiO₂ 0,21%)"; si se
   tilda "oxígeno suplementario" en Revisión y se completa el detalle (ej. "2 L/min por cánula
   nasal"), el informe usa esa frase en su lugar.
+- **Desaturación significativa y saturación mínima**: la app junta todos los valores de SpO2
+  de toda la prueba (basal, los 6 minutos, paradas y finalización anticipada) y si la
+  diferencia entre el máximo y el mínimo es de 4 puntos o más, agrega al informe "Presenta
+  desaturación significativa durante la prueba." (si no, aclara que no la presenta). El valor
+  mínimo de SpO2 de toda la prueba también se muestra como resultado aparte ("Saturación
+  mínima"). Esto no estaba en el Excel original, se agregó a pedido.
 - **Validación de peso/talla/edad**: no deja avanzar con valores fuera de rango clínico
   razonable (peso 20–300 kg, talla 100–250 cm, edad 1–120 años).
+- **Guardado automático al enviar por mail**: si "Enviar por mail" sale bien, el test queda
+  guardado solo en el historial, no hace falta tocar "Guardar" aparte. Si falla el guardado en
+  Drive, se avisa por separado — no da a entender que el mail también falló.
+- **Botón de Inicio (🏠)**: en el header de cualquier pantalla, vuelve directo al historial
+  (pide confirmación si hay una prueba o recuperación en curso, para no perderla sin querer).
+- **"Forzar actualización" (Ajustes)**: si el celular quedó con una versión vieja cacheada
+  después de subir cambios nuevos, este botón borra el service worker y la caché y recarga la
+  app. Ajustes también muestra la versión actual (`TM6M.APP_VERSION`) para poder confirmar de
+  un vistazo si ya se actualizó.
 
 ## Datos y privacidad
 
@@ -84,8 +114,8 @@ y no funciona — el dispositivo no aparece ni con "mostrar todos los dispositiv
 que indica que usa Bluetooth clásico (SPP) en vez de BLE, y un navegador solo puede ver
 dispositivos BLE. Eso no se puede arreglar con código: es una limitación de la plataforma web
 en general, no de esta app. Por eso se sacó esa función por completo — la app no pide ninguna
-conexión, todo el ingreso de SpO2 y FC es manual (con el botón "Sin señal" para dejar el campo
-vacío cuando el oxímetro no logra tomar la lectura).
+conexión, todo el ingreso de SpO2 y FC es manual. Si el oxímetro no logra tomar la lectura, ese
+campo simplemente se deja vacío (no hay ningún botón especial para eso).
 
 ## Enviar por mail y guardar en Drive
 
@@ -146,5 +176,8 @@ Cada vez que se suben cambios nuevos a GitHub, conviene cerrar del todo la app e
 
 Como los archivos usan `fetch`/service worker, no se pueden abrir con doble clic
 (`file://`). Hace falta levantarlos con cualquier servidor estático local y abrir esa URL
-en el navegador, por ejemplo con la extensión "Live Server" de VS Code, o cualquier otro
-servidor estático que ya tengas instalado.
+en el navegador — por ejemplo con la extensión "Live Server" de VS Code, `npx serve` si hay
+Node instalado, o cualquier otro servidor estático que ya tengas instalado. En esta máquina de
+desarrollo no hay Python ni Node, así que se usó un servidor mínimo en PowerShell
+(`System.Net.HttpListener` sirviendo los archivos del proyecto en un puerto local) — ver
+[`PROJECT_STATE.md`](PROJECT_STATE.md) sección 10 si hace falta rearmarlo.
