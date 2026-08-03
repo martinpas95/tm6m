@@ -83,11 +83,18 @@ TM6M.test = (function () {
     el('test-meters-total').textContent = TM6M.calc.metrosTotales(t.filas);
   }
 
-  // --- Flechas de sentido de marcha (↑ al arrancar, alterna ↓/↑ en cada vuelta) ---
+  // --- Flechas de sentido de marcha ---
+  // La flecha ↑ automática (sin haber tocado "Vuelta") existe UNA sola vez, al
+  // arrancar la prueba entera (minuto 1). De ahí en más, en cualquier minuto —
+  // incluso al cambiar de minuto — es 100% manual: el recuadro arranca vacío y
+  // solo se llena con toques reales de "Vuelta".
 
-  function arrowSequence(count) {
-    var seq = ['up'];
-    for (var k = 1; k <= count; k++) seq.push(k % 2 === 1 ? 'down' : 'up');
+  function arrowSequence(count, seeded) {
+    var seq = seeded ? ['up'] : [];
+    for (var k = 1; k <= count; k++) {
+      var isFirstOfPair = seeded ? (k % 2 === 1) : (k % 2 === 0);
+      seq.push(isFirstOfPair ? 'down' : 'up');
+    }
     return seq;
   }
 
@@ -106,7 +113,8 @@ TM6M.test = (function () {
     var box = el('test-direction-box');
     if (!box) return;
     var counts = lapCountsByMinute();
-    var seq = arrowSequence(counts[currentMinuteIndex()] || 0);
+    var curMinute = currentMinuteIndex();
+    var seq = arrowSequence(counts[curMinute] || 0, curMinute === 1);
     box.innerHTML = arrowGlyphsHtml(seq);
   }
 
@@ -283,7 +291,6 @@ TM6M.test = (function () {
     var container = el('test-rows');
     container.innerHTML = '';
     var sec = Math.floor(getElapsedMs() / 1000);
-    var curMinute = currentMinuteIndex();
     var counts = lapCountsByMinute();
 
     for (var i = 1; i <= 6; i++) {
@@ -303,10 +310,11 @@ TM6M.test = (function () {
         });
         row.appendChild(head);
 
-        if (counts[i] > 0 || i === curMinute) {
+        var seqForRow = arrowSequence(counts[i], i === 1);
+        if (seqForRow.length) {
           var arrowsRow = document.createElement('div');
           arrowsRow.className = 'minute-row-arrows';
-          arrowsRow.innerHTML = arrowGlyphsHtml(arrowSequence(counts[i]));
+          arrowsRow.innerHTML = arrowGlyphsHtml(seqForRow);
           row.appendChild(arrowsRow);
         }
 
