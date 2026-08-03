@@ -1,6 +1,6 @@
 // Service worker cache-first: la app funciona sin internet una vez instalada.
 // Al cambiar de versión (nombre de CACHE_NAME) se vuelve a descargar todo.
-var CACHE_NAME = 'tm6m-v1';
+var CACHE_NAME = 'tm6m-v3';
 var CORE_FILES = [
   './',
   './index.html',
@@ -10,6 +10,9 @@ var CORE_FILES = [
   './js/calc.js',
   './js/ui.js',
   './js/ble.js',
+  './js/logo.js',
+  './js/pdf.js',
+  './js/google.js',
   './js/home.js',
   './js/patient.js',
   './js/test.js',

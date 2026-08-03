@@ -17,6 +17,13 @@
   <h1 id="app-bar-title">Test de Marcha 6&#8217;</h1>
   <button id="btn-settings" class="icon-btn" aria-label="Ajustes">&#9881;&#65039;</button>
 </header>
+<div id="stepper" class="stepper no-print" hidden>
+  <div class="stepper-step" data-step="patient"><span class="stepper-dot">1</span><span class="stepper-label">Datos</span></div>
+  <div class="stepper-step" data-step="test"><span class="stepper-dot">2</span><span class="stepper-label">Prueba</span></div>
+  <div class="stepper-step" data-step="recovery"><span class="stepper-dot">3</span><span class="stepper-label">Recuperación</span></div>
+  <div class="stepper-step" data-step="review"><span class="stepper-dot">4</span><span class="stepper-label">Revisión</span></div>
+  <div class="stepper-step" data-step="report"><span class="stepper-dot">5</span><span class="stepper-label">Informe</span></div>
+</div>
 
 <main id="app-main">
 
@@ -50,10 +57,10 @@
       </div>
       <div class="field-row">
         <label>Peso (kg)
-          <input type="number" id="p-peso" step="0.1" min="1" inputmode="decimal" required>
+          <input type="number" id="p-peso" step="0.1" min="20" max="300" inputmode="decimal" required>
         </label>
         <label>Talla (cm)
-          <input type="number" id="p-talla" step="1" min="50" inputmode="numeric" required>
+          <input type="number" id="p-talla" step="1" min="100" max="250" inputmode="numeric" required>
         </label>
       </div>
       <p class="hint" id="p-bmi-hint">BMI: &mdash;</p>
@@ -81,13 +88,23 @@
 
   <section id="view-test" class="view">
     <div class="timer-block">
-      <div id="test-timer" class="timer-display">00:00</div>
+      <div class="timer-ring-wrap">
+        <svg class="timer-ring-svg" viewBox="0 0 120 120">
+          <circle class="timer-ring-bg" cx="60" cy="60" r="54"></circle>
+          <circle class="timer-ring-fg" id="test-timer-ring" cx="60" cy="60" r="54"></circle>
+        </svg>
+        <div id="test-timer" class="timer-display">00:00</div>
+      </div>
       <div class="timer-controls">
-        <button id="btn-test-pause" class="btn btn-secondary">Pausar</button>
-        <button id="btn-test-finish" class="btn btn-warning">Finalizar caminata</button>
+        <button id="btn-test-finish" class="btn btn-warning">Finalizar antes de tiempo</button>
       </div>
     </div>
     <div id="test-ble-badge" class="ble-badge" hidden></div>
+
+    <button id="btn-test-parada" class="btn btn-secondary btn-block btn-lg">&#9208; El paciente se detiene</button>
+    <div id="test-parada-box" class="card" hidden></div>
+    <ul id="test-parada-list" class="parada-list"></ul>
+
     <button id="btn-lap" class="btn btn-primary btn-lg btn-block lap-btn">Vuelta &nbsp;(+<span id="lap-meters">15</span>&nbsp;m)</button>
     <p class="meters-total">Metros: <strong id="test-meters-total">0</strong> m &middot; Vueltas: <span id="lap-count">0</span></p>
 
@@ -136,10 +153,25 @@
   <section id="view-report" class="view">
     <div class="no-print report-toolbar">
       <button id="btn-report-edit" class="btn btn-secondary">&#9998; Editar datos</button>
-      <button id="btn-report-save" class="btn btn-secondary">&#128190; Guardar</button>
-      <button id="btn-report-print" class="btn btn-primary">&#128424;&#65039; Imprimir / PDF</button>
+      <button id="btn-report-print" class="btn btn-secondary">&#128424;&#65039; Imprimir</button>
+      <button id="btn-report-pdf" class="btn btn-secondary">&#8681; Descargar PDF</button>
+      <button id="btn-report-save" class="btn btn-primary">&#128190; Guardar</button>
     </div>
+
+    <div class="no-print card">
+      <p class="section-label">Enviar por mail</p>
+      <label>Email del paciente
+        <input type="email" id="r-paciente-email" placeholder="paciente@ejemplo.com" autocomplete="off">
+      </label>
+      <button id="btn-report-mail" class="btn btn-secondary btn-block">&#9993; Enviar informe por mail</button>
+      <div id="report-mail-status" class="hint"></div>
+    </div>
+
     <article id="report-sheet" class="report-sheet"></article>
+
+    <div class="no-print report-toolbar report-toolbar-bottom">
+      <button id="btn-report-new" class="btn btn-primary btn-block btn-lg">+ Nuevo test</button>
+    </div>
   </section>
 
   <section id="view-settings" class="view">
@@ -163,6 +195,22 @@
       <button type="submit" class="btn btn-primary btn-block">Guardar ajustes</button>
     </form>
     <hr>
+    <div class="settings-google">
+      <p class="section-label">Enviar por Gmail y guardar en Drive</p>
+      <p class="hint">Para poder enviar el informe por mail y guardar una copia en tu Drive hace falta un Client ID de Google propio (gratis, se crea una sola vez). Ver el paso a paso en el README del proyecto.</p>
+      <label>Client ID de Google
+        <input type="text" id="s-google-client-id" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off">
+      </label>
+      <label>Nombre del remitente (lo que ve el paciente en vez de tu nombre)
+        <input type="text" id="s-remitente" placeholder="Test de Caminata - Sanatorio Finochietto" autocomplete="off">
+      </label>
+      <p class="hint">Esto cambia c&oacute;mo se ve el remitente en la bandeja del paciente. La direcci&oacute;n de mail en s&iacute; sigue siendo la cuenta de Google que conectes abajo &mdash; si quer&eacute;s que tampoco se vea tu mail personal, cre&aacute; una cuenta de Gmail nueva y gratuita solo para esto, y conectala en vez de la tuya.</p>
+      <button id="btn-google-save" class="btn btn-secondary btn-block">Guardar Client ID y remitente</button>
+      <div id="google-status" class="status-text">Sin configurar</div>
+      <button id="btn-google-connect" class="btn btn-secondary btn-block">Conectar con Google</button>
+      <button id="btn-google-disconnect" class="btn btn-danger btn-block" hidden>Desconectar de Google</button>
+    </div>
+    <hr>
     <div class="settings-ble">
       <p class="section-label">Ox&iacute;metro Bluetooth</p>
       <p class="hint">Conexi&oacute;n directa y experimental al sensor (no pasa por la app ViHealth, eso no es posible entre apps). Solo funciona si tu ox&iacute;metro implementa el perfil Bluetooth est&aacute;ndar de oximetr&iacute;a &mdash; muchos ox&iacute;metros econ&oacute;micos usan un protocolo propio y en ese caso no va a poder conectar. La carga manual funciona siempre, se use o no el Bluetooth.</p>
@@ -185,10 +233,16 @@
 
 <div id="toast" class="toast" hidden></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
 <script src="js/storage.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/ble.js"></script>
+<script src="js/logo.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/google.js"></script>
 <script src="js/home.js"></script>
 <script src="js/patient.js"></script>
 <script src="js/test.js"></script>

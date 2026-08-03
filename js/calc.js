@@ -49,6 +49,58 @@ TM6M.calc = (function () {
 
   function fmtOrDash(v) { return isNum(v) ? v : '-'; }
 
+  function fmtMinSec(sec) {
+    if (!isNum(sec)) return '—';
+    var m = Math.floor(sec / 60);
+    var s = Math.round(sec % 60);
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  function buildParadaLines(paradas) {
+    if (!paradas || !paradas.length) return [];
+    return paradas.filter(function (p) { return isNum(p.inicioSec) && isNum(p.finSec); }).map(function (p) {
+      return 'Detiene la caminata en el minuto ' + fmtMinSec(p.inicioSec) + ' por disnea de ' + fmtOrDash(p.borgDisnea) +
+        ' y de MMII de ' + fmtOrDash(p.borgMmii) + '. Retoma en el minuto ' + fmtMinSec(p.finSec) + '.';
+    });
+  }
+
+  // "120/80" -> {sys:120, dia:80}
+  function parseTa(str) {
+    if (!str) return null;
+    var m = String(str).match(/(\d{2,3})\s*\/\s*(\d{2,3})/);
+    if (!m) return null;
+    return { sys: Number(m[1]), dia: Number(m[2]) };
+  }
+
+  // Respuesta tensional al ejercicio: adecuada (PAS +10 a +30 mmHg) vs aplanada (PAS sube <10 mmHg)
+  function classifyTaResponse(taInicial, taFinal) {
+    var ini = parseTa(taInicial);
+    var fin = parseTa(taFinal);
+    if (!ini || !fin) return null;
+    var deltaSys = fin.sys - ini.sys;
+    return deltaSys < 10 ? 'aplanada' : 'adecuada';
+  }
+
+  var LIMITES = {
+    edadMin: 1, edadMax: 120,
+    pesoMin: 20, pesoMax: 300,
+    tallaMin: 100, tallaMax: 250
+  };
+
+  function validatePatientBasics(t) {
+    var errors = [];
+    if (!isNum(t.edad) || t.edad < LIMITES.edadMin || t.edad > LIMITES.edadMax) {
+      errors.push('La edad tiene que estar entre ' + LIMITES.edadMin + ' y ' + LIMITES.edadMax + ' años.');
+    }
+    if (!isNum(t.peso) || t.peso < LIMITES.pesoMin || t.peso > LIMITES.pesoMax) {
+      errors.push('El peso tiene que estar entre ' + LIMITES.pesoMin + ' y ' + LIMITES.pesoMax + ' kg.');
+    }
+    if (!isNum(t.talla) || t.talla < LIMITES.tallaMin || t.talla > LIMITES.tallaMax) {
+      errors.push('La talla tiene que estar entre ' + LIMITES.tallaMin + ' y ' + LIMITES.tallaMax + ' cm.');
+    }
+    return errors;
+  }
+
   function buildConclusion(ctx) {
     var lines = [];
 
@@ -77,6 +129,39 @@ TM6M.calc = (function () {
     return lines;
   }
 
+  function computeReport(t) {
+    var metrosTot = metrosTotales(t.filas);
+    var metrosPred = metrosPredichos(t.sexo, Number(t.talla), Number(t.edad), Number(t.peso));
+    var fcMax = fcMaxima(t.filas);
+    var pctFc = pctFcPredicha(fcMax, Number(t.edad));
+    var pctMetros = pctMetrosPredicho(metrosTot, metrosPred);
+    var bmiVal = bmi(Number(t.peso), Number(t.talla));
+    var finalFila = t.filas[6];
+
+    var conclusionLines = buildConclusion({
+      pctFc: pctFc,
+      metrosTot: metrosTot,
+      pctMetros: pctMetros,
+      borgDFinal: finalFila.borgDisnea,
+      borgMFinal: finalFila.borgMmii,
+      recuperaSatMin: t.recuperacion.recuperaSatEnMin,
+      recuperaFcMin: t.recuperacion.recuperaFcEnMin,
+      fcAlMinuto: t.recuperacion.fcAlMinuto
+    });
+
+    return {
+      metrosTot: metrosTot,
+      metrosPred: metrosPred,
+      fcMax: fcMax,
+      pctFc: pctFc,
+      pctMetros: pctMetros,
+      bmi: bmiVal,
+      conclusionLines: conclusionLines,
+      paradaLines: buildParadaLines(t.paradas),
+      taResp: classifyTaResponse(t.taInicial, t.taFinal)
+    };
+  }
+
   return {
     isNum: isNum,
     metrosPredichos: metrosPredichos,
@@ -86,6 +171,13 @@ TM6M.calc = (function () {
     fcMaximaTeorica: fcMaximaTeorica,
     pctFcPredicha: pctFcPredicha,
     pctMetrosPredicho: pctMetrosPredicho,
-    buildConclusion: buildConclusion
+    buildConclusion: buildConclusion,
+    fmtMinSec: fmtMinSec,
+    buildParadaLines: buildParadaLines,
+    parseTa: parseTa,
+    classifyTaResponse: classifyTaResponse,
+    validatePatientBasics: validatePatientBasics,
+    LIMITES: LIMITES,
+    computeReport: computeReport
   };
 })();

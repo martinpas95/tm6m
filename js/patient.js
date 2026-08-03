@@ -82,8 +82,13 @@ TM6M.patient = (function () {
     el('patient-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var t = TM6M.state.current;
-      if (!t.paciente || !TM6M.calc.isNum(t.edad) || !TM6M.calc.isNum(t.peso) || !TM6M.calc.isNum(t.talla)) {
-        TM6M.ui.toast('Falta completar nombre, edad, peso o talla');
+      if (!t.paciente) {
+        TM6M.ui.toast('Falta el nombre del paciente');
+        return;
+      }
+      var errors = TM6M.calc.validatePatientBasics(t);
+      if (errors.length) {
+        TM6M.ui.toast(errors[0], 3500);
         return;
       }
       if (!Number.isInteger(Number(t.talla))) {

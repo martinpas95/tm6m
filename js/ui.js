@@ -14,8 +14,21 @@ TM6M.ui = (function () {
   var currentView = 'home';
   var guards = {};
   var toastTimer = null;
+  var stepperOrder = ['patient', 'test', 'recovery', 'review', 'report'];
 
   function el(id) { return document.getElementById(id); }
+
+  function updateStepper(name) {
+    var stepper = el('stepper');
+    var idx = stepperOrder.indexOf(name);
+    stepper.hidden = idx === -1;
+    if (idx === -1) return;
+    var steps = stepper.querySelectorAll('.stepper-step');
+    steps.forEach(function (stepEl, i) {
+      stepEl.classList.toggle('active', i === idx);
+      stepEl.classList.toggle('done', i < idx);
+    });
+  }
 
   function showView(name, opts) {
     opts = opts || {};
@@ -26,6 +39,7 @@ TM6M.ui = (function () {
     target.classList.add('active');
     el('app-bar-title').textContent = viewTitles[name] || 'Test de Marcha 6’';
     el('btn-back').hidden = (name === 'home');
+    updateStepper(name);
     window.scrollTo(0, 0);
     currentView = name;
     if (!opts.fromPopState) {

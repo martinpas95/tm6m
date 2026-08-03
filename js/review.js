@@ -11,6 +11,8 @@ TM6M.review = (function () {
     root.appendChild(patientCard(t));
     for (var i = 0; i <= 6; i++) root.appendChild(filaCard(t, i));
     root.appendChild(postCard(t));
+    if (t.paradas && t.paradas.length) root.appendChild(paradasCard(t));
+    root.appendChild(oxigenoCard(t));
     root.appendChild(notesCard(t));
   }
 
@@ -81,14 +83,79 @@ TM6M.review = (function () {
       grid.appendChild(gridField('Técnico', function (box) {
         textInput(box, t.tecnico, function (v) { t.tecnico = v; });
       }, true));
+      var taRespHint = document.createElement('p');
+      taRespHint.className = 'hint ta-resp-hint full';
+
+      function refreshTaResp() {
+        var resp = TM6M.calc.classifyTaResponse(t.taInicial, t.taFinal);
+        if (!resp) { taRespHint.textContent = 'Respuesta de TA: completá TA inicial y final (ej: 120/80) para calcularla sola.'; }
+        else { taRespHint.textContent = 'Respuesta de TA calculada: ' + (resp === 'adecuada' ? 'Adecuada' : 'Aplanada') + '.'; }
+      }
+
       grid.appendChild(gridField('TA inicial', function (box) {
-        textInput(box, t.taInicial, function (v) { t.taInicial = v; });
+        var i = textInput(box, t.taInicial, function (v) { t.taInicial = v; refreshTaResp(); });
       }));
       grid.appendChild(gridField('TA final', function (box) {
-        textInput(box, t.taFinal, function (v) { t.taFinal = v; });
+        var i = textInput(box, t.taFinal, function (v) { t.taFinal = v; refreshTaResp(); });
       }));
+      grid.appendChild(taRespHint);
+      refreshTaResp();
 
       c.appendChild(grid);
+    });
+  }
+
+  function paradasCard(t) {
+    return card('Paradas durante la caminata', function (c) {
+      t.paradas.forEach(function (p, idx) {
+        var row = document.createElement('div');
+        row.className = 'parada-review-row';
+        var title = document.createElement('p');
+        title.className = 'sub-label';
+        title.textContent = 'Parada ' + (idx + 1) + ': minuto ' + TM6M.calc.fmtMinSec(p.inicioSec) + (TM6M.calc.isNum(p.finSec) ? (' – ' + TM6M.calc.fmtMinSec(p.finSec)) : ' (sin retomar)');
+        row.appendChild(title);
+        var box = document.createElement('div');
+        box.appendChild(TM6M.ui.fieldBlock('Borg disnea', function (b) {
+          TM6M.ui.buildBorgSelector(b, p.borgDisnea, function (v) { p.borgDisnea = v; });
+        }));
+        box.appendChild(TM6M.ui.fieldBlock('Borg MMII', function (b) {
+          TM6M.ui.buildBorgSelector(b, p.borgMmii, function (v) { p.borgMmii = v; });
+        }));
+        row.appendChild(box);
+        c.appendChild(row);
+      });
+    });
+  }
+
+  function oxigenoCard(t) {
+    return card('Oxígeno durante la prueba', function (c) {
+      var label = document.createElement('label');
+      label.className = 'checkbox-label';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!t.oxigeno.suplementario;
+      var detalleWrap = document.createElement('div');
+
+      function renderDetalle() {
+        detalleWrap.innerHTML = '';
+        if (!t.oxigeno.suplementario) return;
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'ej: 2 L/min por cánula nasal';
+        input.value = t.oxigeno.detalle || '';
+        input.addEventListener('input', function () { t.oxigeno.detalle = input.value; });
+        detalleWrap.appendChild(input);
+      }
+
+      cb.addEventListener('change', function () {
+        t.oxigeno.suplementario = cb.checked;
+        renderDetalle();
+      });
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode('Prueba realizada con oxígeno suplementario (por defecto es al aire ambiente, FiO₂ 0,21%)'));
+      c.appendChild(label);
+      c.appendChild(detalleWrap);
+      renderDetalle();
     });
   }
 
@@ -125,10 +192,10 @@ TM6M.review = (function () {
       label.className = 'checkbox-label';
       var cb = document.createElement('input');
       cb.type = 'checkbox';
-      cb.checked = !!t.notas.taAplanada;
-      cb.addEventListener('change', function () { t.notas.taAplanada = cb.checked; });
+      cb.checked = !!t.notas.hipertensivos;
+      cb.addEventListener('change', function () { t.notas.hipertensivos = cb.checked; });
       label.appendChild(cb);
-      label.appendChild(document.createTextNode('Respuesta de TA aplanada'));
+      label.appendChild(document.createTextNode('Se registraron picos hipertensivos durante la prueba'));
       c.appendChild(label);
 
       var ta = document.createElement('textarea');
@@ -142,6 +209,11 @@ TM6M.review = (function () {
 
   function init() {
     el('btn-review-generate').addEventListener('click', function () {
+      var errors = TM6M.calc.validatePatientBasics(TM6M.state.current);
+      if (errors.length) {
+        TM6M.ui.toast(errors[0], 3500);
+        return;
+      }
       TM6M.report.render();
       TM6M.ui.showView('report');
     });

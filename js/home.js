@@ -22,7 +22,7 @@ TM6M.home = (function () {
 
     tests.forEach(function (t) {
       var li = document.createElement('li');
-      li.className = 'test-item';
+      li.className = 'test-item' + (t.finalizado ? '' : ' pendiente');
 
       var info = document.createElement('div');
       info.className = 'test-item-info';
@@ -79,18 +79,20 @@ TM6M.home = (function () {
     TM6M.ui.showView('review');
   }
 
+  function startNewTest() {
+    var settings = TM6M.storage.loadSettings();
+    TM6M.state.current = TM6M.model.newTest(settings);
+    TM6M.patient.render();
+    TM6M.ui.showView('patient');
+  }
+
   function init() {
-    el('btn-new-test').addEventListener('click', function () {
-      var settings = TM6M.storage.loadSettings();
-      TM6M.state.current = TM6M.model.newTest(settings);
-      TM6M.patient.render();
-      TM6M.ui.showView('patient');
-    });
+    el('btn-new-test').addEventListener('click', startNewTest);
     el('home-search').addEventListener('input', function () {
       query = el('home-search').value;
       render();
     });
   }
 
-  return { init: init, render: render };
+  return { init: init, render: render, startNewTest: startNewTest };
 })();

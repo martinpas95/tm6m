@@ -10,7 +10,9 @@ TM6M.storage = (function () {
     matricula: 'M.N 176.629',
     especialidad: 'Neumonólogo Universitario',
     tecnicoDefault: 'Dr. Pascansky Martin',
-    metrosPorVuelta: 15
+    metrosPorVuelta: 15,
+    googleClientId: '',
+    remitenteNombre: 'Test de Caminata - Sanatorio Finochietto'
   };
 
   function loadSettings() {
@@ -133,9 +135,12 @@ TM6M.model = (function () {
       metrosPorVuelta: (settings && settings.metrosPorVuelta) || 15,
       filas: filas,
       vueltas: [],
+      paradas: [],
       startedAt: null,
       recuperacion: { fcAlMinuto: null, recuperaFcEnMin: null, recuperaSatEnMin: null },
-      notas: { taAplanada: false, libre: '' },
+      oxigeno: { suplementario: false, detalle: '' },
+      notas: { hipertensivos: false, libre: '' },
+      pacienteEmail: '',
       finalizado: false
     };
   }
