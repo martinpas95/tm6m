@@ -139,7 +139,6 @@ TM6M.report = (function () {
     sheet.appendChild(results);
 
     var paradaLines = r.paradaLines;
-    var taResp = r.taResp;
 
     var conclusion = document.createElement('div');
     conclusion.className = 'report-conclusion';
@@ -163,9 +162,9 @@ TM6M.report = (function () {
       pDesat.textContent = r.desaturacionLine;
       conclusion.appendChild(pDesat);
     }
-    if (taResp) {
+    if (r.taRespLine) {
       var pTa = document.createElement('p');
-      pTa.textContent = 'Respuesta de TA ' + (taResp === 'adecuada' ? 'adecuada' : 'aplanada') + '.';
+      pTa.textContent = r.taRespLine;
       conclusion.appendChild(pTa);
     }
     if (t.notas.hipertensivos) {

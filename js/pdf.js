@@ -9,6 +9,7 @@ TM6M.pdfgen = (function () {
   var PRIMARY_LIGHT = [228, 241, 243];
   var ACCENT = [23, 167, 152];
   var WARN = [188, 96, 27];
+  var DANGER = [193, 45, 45];
   var TEXT = [22, 37, 42];
   var GRAY = [117, 130, 133];
   var LIGHT_GRAY = [214, 224, 225];
@@ -65,18 +66,18 @@ TM6M.pdfgen = (function () {
     }
 
     function sectionHeading(text) {
-      ensureSpace(9);
+      ensureSpace(8);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9.3);
       setText(PRIMARY);
       doc.text(text.toUpperCase(), marginX, y);
-      y += 1.5;
+      y += 1.3;
       setDraw(ACCENT);
       doc.setLineWidth(0.9);
       doc.line(marginX, y, marginX + 16, y);
       doc.setLineWidth(0.2);
       setText(TEXT);
-      y += 4.4;
+      y += 3.8;
     }
 
     function fieldRowMulti(fields, rowH) {
@@ -101,7 +102,7 @@ TM6M.pdfgen = (function () {
 
     function fieldRowFull(label, value, size) {
       size = size || 10.5;
-      ensureSpace(12);
+      ensureSpace(10);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.3);
       setText(GRAY);
@@ -109,11 +110,11 @@ TM6M.pdfgen = (function () {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(size);
       setText(TEXT);
-      var lineH = size * 0.42 + 1;
+      var lineH = size * 0.4 + 0.7;
       var lines = doc.splitTextToSize(fmt(value), contentW);
-      doc.text(lines, marginX, y + 4.8);
+      doc.text(lines, marginX, y + 4.3);
       setText(TEXT);
-      y += 4.8 + lines.length * lineH + 2;
+      y += 4.3 + lines.length * lineH + 1.2;
     }
 
     function bulletParagraph(text) {
@@ -171,11 +172,11 @@ TM6M.pdfgen = (function () {
     fieldRowMulti([['Edad', fmt(t.edad, 'años')], ['Sexo', t.sexo === 'M' ? 'Masculino' : 'Femenino'], ['Peso', fmt(t.peso, 'kg')], ['Talla', fmt(t.talla, 'cm')]], 8.4);
     fieldRowMulti([['BMI', r.bmi ? r.bmi.toFixed(1) : '—'], ['Técnico', t.tecnico]], 8.4);
     fieldRowFull('Diagnóstico', t.diagnostico);
-    y += 1.5;
+    y += 1;
     setDraw(LIGHT_GRAY);
     doc.setLineWidth(0.3);
     doc.line(marginX, y, pageW - marginX, y);
-    y += 6.5;
+    y += 4.5;
 
     // ---------- Tabla minuto a minuto ----------
     var headers = ['MINUTO', 'SpO2 %', 'FC (lpm)', 'METROS', 'BORG DISNEA', 'BORG MMII'];
@@ -278,8 +279,9 @@ TM6M.pdfgen = (function () {
     setText(PRIMARY_DARK);
     doc.text((t.taInicial || '—') + '   »   ' + (t.taFinal || '—'), marginX + 7, ry + 7);
     if (r.taResp) {
-      var pillTxt = r.taResp === 'adecuada' ? 'Respuesta adecuada' : 'Respuesta aplanada';
-      var pillCol = r.taResp === 'adecuada' ? ACCENT : WARN;
+      var pillTxt = r.taResp === 'adecuada' ? 'Respuesta adecuada' :
+        (r.taResp === 'hipotensiva' ? 'Hipotensión' : 'Respuesta aplanada');
+      var pillCol = r.taResp === 'adecuada' ? ACCENT : (r.taResp === 'hipotensiva' ? DANGER : WARN);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
       var pillW = doc.getTextWidth(pillTxt) + 7;
@@ -298,6 +300,7 @@ TM6M.pdfgen = (function () {
     sectionHeading('Conclusión');
     r.conclusionLines.forEach(bulletParagraph);
     if (r.desaturacionLine) bulletParagraph(r.desaturacionLine);
+    if (r.taResp === 'hipotensiva') bulletParagraph(r.taRespLine);
 
     // ---------- Incidencias durante la prueba ----------
     if (r.paradaLines.length || r.terminoAnticipadoLine) {

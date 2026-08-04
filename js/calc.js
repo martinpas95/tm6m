@@ -83,12 +83,14 @@ TM6M.calc = (function () {
     return { sys: Number(m[1]), dia: Number(m[2]) };
   }
 
-  // Respuesta tensional al ejercicio: adecuada (PAS +10 a +30 mmHg) vs aplanada (PAS sube <10 mmHg)
+  // Respuesta tensional al ejercicio: adecuada (PAS sube >=10 mmHg), hipotensiva
+  // (PAS final - PAS basal <= -10 mmHg) o aplanada (todo lo que queda en el medio).
   function classifyTaResponse(taInicial, taFinal) {
     var ini = parseTa(taInicial);
     var fin = parseTa(taFinal);
     if (!ini || !fin) return null;
     var deltaSys = fin.sys - ini.sys;
+    if (deltaSys <= -10) return 'hipotensiva';
     return deltaSys < 10 ? 'aplanada' : 'adecuada';
   }
 
@@ -161,6 +163,13 @@ TM6M.calc = (function () {
       : 'No presenta desaturación significativa durante la prueba.';
   }
 
+  function buildTaRespLine(taResp) {
+    if (!taResp) return null;
+    if (taResp === 'hipotensiva') return 'Respuesta de TA con hipotensión. Se sugiere su control.';
+    if (taResp === 'adecuada') return 'Respuesta de TA adecuada.';
+    return 'Respuesta de TA aplanada.';
+  }
+
   function computeReport(t) {
     var metrosTot = metrosTotales(t.filas);
     var metrosPred = metrosPredichos(t.sexo, Number(t.talla), Number(t.edad), Number(t.peso));
@@ -170,6 +179,7 @@ TM6M.calc = (function () {
     var bmiVal = bmi(Number(t.peso), Number(t.talla));
     var finalFila = t.filas[6];
     var desat = checkDesaturacion(t);
+    var taResp = classifyTaResponse(t.taInicial, t.taFinal);
 
     var conclusionLines = buildConclusion({
       pctFc: pctFc,
@@ -192,7 +202,8 @@ TM6M.calc = (function () {
       conclusionLines: conclusionLines,
       paradaLines: buildParadaLines(t.paradas),
       terminoAnticipadoLine: buildTerminoAnticipadoLine(t.terminoAnticipado),
-      taResp: classifyTaResponse(t.taInicial, t.taFinal),
+      taResp: taResp,
+      taRespLine: buildTaRespLine(taResp),
       desaturacionLine: buildDesaturacionLine(desat),
       spo2Min: desat ? desat.min : null
     };
@@ -213,6 +224,7 @@ TM6M.calc = (function () {
     buildTerminoAnticipadoLine: buildTerminoAnticipadoLine,
     parseTa: parseTa,
     classifyTaResponse: classifyTaResponse,
+    buildTaRespLine: buildTaRespLine,
     validatePatientBasics: validatePatientBasics,
     checkDesaturacion: checkDesaturacion,
     buildDesaturacionLine: buildDesaturacionLine,

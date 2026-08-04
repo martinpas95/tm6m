@@ -90,7 +90,10 @@ TM6M.review = (function () {
       function refreshTaResp() {
         var resp = TM6M.calc.classifyTaResponse(t.taInicial, t.taFinal);
         if (!resp) { taRespHint.textContent = 'Respuesta de TA: completá TA inicial y final (ej: 120/80) para calcularla sola.'; }
-        else { taRespHint.textContent = 'Respuesta de TA calculada: ' + (resp === 'adecuada' ? 'Adecuada' : 'Aplanada') + '.'; }
+        else {
+          var label = resp === 'adecuada' ? 'Adecuada' : (resp === 'hipotensiva' ? 'Hipotensiva (se sugiere control)' : 'Aplanada');
+          taRespHint.textContent = 'Respuesta de TA calculada: ' + label + '.';
+        }
       }
 
       grid.appendChild(gridField('TA inicial', function (box) {
