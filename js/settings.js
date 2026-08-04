@@ -30,7 +30,10 @@ TM6M.settings = (function () {
       }));
     }
     Promise.all(tasks).then(function () {
-      location.reload();
+      // location.reload() no alcanza: GitHub Pages sirve index.html con caché de 10 min,
+      // así que el navegador podría reusar la copia vieja igual. Forzamos una URL distinta
+      // (cache-busting) para garantizar que se baje todo de nuevo.
+      location.href = location.pathname + '?_=' + Date.now();
     });
   }
 
