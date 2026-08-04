@@ -43,7 +43,7 @@ TM6M.pdfgen = (function () {
     var pageH = doc.internal.pageSize.getHeight();
     var marginX = 16;
     var marginTop = 14;
-    var marginBottom = 11;
+    var marginBottom = 12;
     var contentW = pageW - marginX * 2;
     var y = 0;
 
@@ -79,21 +79,24 @@ TM6M.pdfgen = (function () {
       y += 4.4;
     }
 
-    function fieldRowMulti(fields) {
-      var colW = contentW / fields.length;
-      fields.forEach(function (f, idx) {
-        var x = marginX + idx * colW;
+    function fieldRowMulti(fields, rowH) {
+      rowH = rowH || 8.2;
+      var totalWeight = fields.reduce(function (s, f) { return s + (f[2] || 1); }, 0);
+      var x = marginX;
+      fields.forEach(function (f) {
+        var w = contentW * ((f[2] || 1) / totalWeight);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7.3);
         setText(GRAY);
         doc.text(f[0].toUpperCase(), x, y);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10.5);
+        doc.setFontSize(f[3] || 10.5);
         setText(TEXT);
         doc.text(fmt(f[1]), x, y + 4.8);
+        x += w;
       });
       setText(TEXT);
-      y += 8.6;
+      y += rowH;
     }
 
     function fieldRowFull(label, value, size) {
@@ -118,12 +121,12 @@ TM6M.pdfgen = (function () {
       doc.setFontSize(10);
       var wrapW = contentW - 5;
       var lines = doc.splitTextToSize(text, wrapW);
-      ensureSpace(lines.length * 4.2 + 1.8);
+      ensureSpace(lines.length * 4.4 + 2);
       setFill(ACCENT);
       doc.circle(marginX + 1, y - 1.3, 0.8, 'F');
       setText(TEXT);
       doc.text(lines, marginX + 5, y);
-      y += lines.length * 4.2 + 1.8;
+      y += lines.length * 4.4 + 2;
     }
 
     // ---------- Encabezado ----------
@@ -164,10 +167,9 @@ TM6M.pdfgen = (function () {
 
     // ---------- Datos del paciente ----------
     sectionHeading('Datos del paciente');
-    fieldRowFull('Paciente', t.paciente, 13);
-    fieldRowMulti([['Fecha', fmtDate(t.fecha)], ['Edad', fmt(t.edad, 'años')], ['Sexo', t.sexo === 'M' ? 'Masculino' : 'Femenino']]);
-    fieldRowMulti([['Peso', fmt(t.peso, 'kg')], ['Talla', fmt(t.talla, 'cm')], ['BMI', r.bmi ? r.bmi.toFixed(1) : '—']]);
-    fieldRowFull('Técnico', t.tecnico);
+    fieldRowMulti([['Paciente', t.paciente, 1.7, 12], ['Fecha', fmtDate(t.fecha), 1]], 9);
+    fieldRowMulti([['Edad', fmt(t.edad, 'años')], ['Sexo', t.sexo === 'M' ? 'Masculino' : 'Femenino'], ['Peso', fmt(t.peso, 'kg')], ['Talla', fmt(t.talla, 'cm')]], 8.4);
+    fieldRowMulti([['BMI', r.bmi ? r.bmi.toFixed(1) : '—'], ['Técnico', t.tecnico]], 8.4);
     fieldRowFull('Diagnóstico', t.diagnostico);
     y += 1.5;
     setDraw(LIGHT_GRAY);
@@ -178,8 +180,8 @@ TM6M.pdfgen = (function () {
     // ---------- Tabla minuto a minuto ----------
     var headers = ['MINUTO', 'SpO2 %', 'FC (lpm)', 'METROS', 'BORG DISNEA', 'BORG MMII'];
     var colWidths = [20, 26, 26, 26, 40, 40];
-    var headerH = 7;
-    var dataRowH = 6;
+    var headerH = 7.2;
+    var dataRowH = 6.3;
     ensureSpace(headerH + dataRowH * t.filas.length + 6);
     sectionHeading('Registro minuto a minuto');
 
@@ -233,9 +235,9 @@ TM6M.pdfgen = (function () {
       ['Porcentaje FC predicha', tileValue(r.pctFc, '%')],
       ['Saturación mínima', tileValue(r.spo2Min, '%')]
     ];
-    var statRowH = 5.7;
-    var taRowH = 8.3;
-    var boxPad = 2.1;
+    var statRowH = 5.9;
+    var taRowH = 8.5;
+    var boxPad = 2.2;
     var boxH = statRows.length * statRowH + taRowH + boxPad * 2;
     ensureSpace(boxH + 10);
     sectionHeading('Resultados');
@@ -320,12 +322,12 @@ TM6M.pdfgen = (function () {
     }
 
     // ---------- Pie: nota metodológica y firma ----------
-    ensureSpace(23);
+    ensureSpace(26);
     y += 1.5;
     setDraw(LIGHT_GRAY);
     doc.setLineWidth(0.3);
     doc.line(marginX, y, pageW - marginX, y);
-    y += 4.5;
+    y += 5;
 
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8.3);
@@ -334,12 +336,12 @@ TM6M.pdfgen = (function () {
       ? ('Estudio realizado con oxígeno suplementario' + (t.oxigeno.detalle ? (' (' + t.oxigeno.detalle + ')') : '') + '.')
       : 'Estudio realizado al aire ambiente (FiO2 0,21%).';
     doc.text(oxText, pageW / 2, y, { align: 'center' });
-    y += 3.8;
+    y += 4;
     doc.text('Enright PL, Sherrill DL. Am J Respir Crit Care Med. 1998; 158: 1384-1387.', pageW / 2, y, { align: 'center' });
     setText(TEXT);
 
-    y += 3.5;
-    ensureSpace(14);
+    y += 4.5;
+    ensureSpace(15);
     var sigLineW = 70;
     var sigX = pageW / 2 - sigLineW / 2;
     setDraw(GRAY);
@@ -350,7 +352,7 @@ TM6M.pdfgen = (function () {
     doc.setFontSize(10);
     setText(TEXT);
     doc.text(settings.medico || '', pageW / 2, y, { align: 'center' });
-    y += 4;
+    y += 4.2;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.3);
     setText(GRAY);
