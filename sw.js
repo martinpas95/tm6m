@@ -1,25 +1,34 @@
 // Service worker cache-first: la app funciona sin internet una vez instalada.
 // Al cambiar de versión (nombre de CACHE_NAME) se vuelve a descargar todo.
-var CACHE_NAME = 'tm6m-v11';
+//
+// IMPORTANTE: GitHub Pages sirve los .js/.css con Cache-Control: max-age=600, así que
+// aunque acá se borre todo, el navegador puede seguir sirviendo una copia vieja desde su
+// propio caché HTTP (no el de este service worker) hasta que expire ese margen. Por eso
+// index.html pide cada archivo local con "?v=N" (cache-busting): eso hace que el navegador
+// lo trate como una URL distinta y lo baje de nuevo sí o sí. CADA VEZ que se suba un cambio
+// real, hay que bumpear el mismo N en TRES lugares a la vez: CACHE_NAME acá abajo, la lista
+// CORE_FILES (para que coincida exactamente con las URLs que pide index.html) y los "?v=N"
+// de los <script>/<link> en index.html.
+var CACHE_NAME = 'tm6m-v12';
 var CORE_FILES = [
   './',
   './index.html',
   './manifest.json',
-  './css/styles.css',
-  './js/storage.js',
-  './js/calc.js',
-  './js/ui.js',
-  './js/logo.js',
-  './js/pdf.js',
-  './js/google.js',
-  './js/home.js',
-  './js/patient.js',
-  './js/test.js',
-  './js/recovery.js',
-  './js/review.js',
-  './js/report.js',
-  './js/settings.js',
-  './js/main.js',
+  './css/styles.css?v=12',
+  './js/storage.js?v=12',
+  './js/calc.js?v=12',
+  './js/ui.js?v=12',
+  './js/logo.js?v=12',
+  './js/pdf.js?v=12',
+  './js/google.js?v=12',
+  './js/home.js?v=12',
+  './js/patient.js?v=12',
+  './js/test.js?v=12',
+  './js/recovery.js?v=12',
+  './js/review.js?v=12',
+  './js/report.js?v=12',
+  './js/settings.js?v=12',
+  './js/main.js?v=12',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './assets/logo-sanatorio.jpg'
