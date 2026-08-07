@@ -5,6 +5,7 @@ TM6M.test = (function () {
 
   var startedAt = null;
   var timerInterval = null;
+  var autosaveInterval = null;
   var notifiedBoundary = {};
   var openRow = null;
   var manualMetros = {};
@@ -12,6 +13,14 @@ TM6M.test = (function () {
   var pendingEarlyFinish = null;
 
   function getElapsedMs() { return Date.now() - startedAt; }
+
+  // Guardado provisorio cada 2 minutos mientras dura la caminata, para no perder
+  // todo lo cargado si se cierra la app antes de llegar al guardado definitivo del
+  // informe. Es solo un upsert en localStorage (rápido, no toca la UI), y el test
+  // queda como "no finalizado" hasta que se guarde/envíe el informe de verdad.
+  function autosave() {
+    TM6M.storage.upsertTest(TM6M.state.current);
+  }
 
   function start() {
     var t = TM6M.state.current;
@@ -30,6 +39,8 @@ TM6M.test = (function () {
 
     clearInterval(timerInterval);
     timerInterval = setInterval(tick, 250);
+    clearInterval(autosaveInterval);
+    autosaveInterval = setInterval(autosave, 120000);
 
     TM6M.ui.setLeaveGuard('test', function () {
       return confirm('¿Salir de la prueba en curso? El cronómetro se detendrá.');
@@ -161,6 +172,8 @@ TM6M.test = (function () {
 
   function finishWalk() {
     clearInterval(timerInterval);
+    clearInterval(autosaveInterval);
+    autosave();
     TM6M.ui.setLeaveGuard('test', null);
     TM6M.ui.toast('Caminata finalizada, iniciando recuperación');
     // La recuperación arranca en el instante real en que se cumplieron los 6:00 de

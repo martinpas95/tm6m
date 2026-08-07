@@ -22,6 +22,9 @@ TM6M.recovery = (function () {
 
     el('r-fc-1min').value = t.recuperacion.fcAlMinuto === null ? '' : t.recuperacion.fcAlMinuto;
     el('r-ta-final').value = t.taFinal || '';
+    var basal = t.filas[0];
+    el('recovery-sat-basal').textContent = TM6M.calc.isNum(basal.spo2) ? ('(basal: ' + basal.spo2 + '%)') : '';
+    el('recovery-fc-basal').textContent = TM6M.calc.isNum(basal.fc) ? ('(basal: ' + basal.fc + ' lpm)') : '';
     updateStatusUI();
 
     clearInterval(interval);

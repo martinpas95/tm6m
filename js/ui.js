@@ -165,11 +165,12 @@ TM6M.ui = (function () {
   }
 
   // Arma "120/80" solo mientras se escribe: al completar la sistólica (3 dígitos si
-  // empieza con 1 o 2, si no 2 dígitos) inserta la "/" automáticamente.
+  // empieza con 1 o 2, si no 2 dígitos) inserta la "/" automáticamente. La diastólica
+  // acepta hasta 3 dígitos (ej. 150/100), sin importar cuántos tenga la sistólica.
   function formatTaDigits(digits, deleting) {
-    digits = digits.slice(0, 5);
-    if (digits.length === 0) return '';
     var sysLen = (digits[0] === '1' || digits[0] === '2') ? 3 : 2;
+    digits = digits.slice(0, sysLen + 3);
+    if (digits.length === 0) return '';
     if (digits.length < sysLen) return digits;
     if (digits.length === sysLen) return deleting ? digits : (digits + '/');
     return digits.slice(0, sysLen) + '/' + digits.slice(sysLen);
