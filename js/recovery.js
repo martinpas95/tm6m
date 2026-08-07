@@ -84,9 +84,14 @@ TM6M.recovery = (function () {
   }
 
   function init() {
-    el('r-fc-1min').addEventListener('input', function () {
-      var v = el('r-fc-1min').value.trim();
-      TM6M.state.current.recuperacion.fcAlMinuto = v === '' ? null : Number(v);
+    var fc1min = el('r-fc-1min');
+    fc1min.min = TM6M.calc.LIMITES.fcMin;
+    fc1min.max = TM6M.calc.LIMITES.fcMax;
+    fc1min.addEventListener('input', function () {
+      var raw = fc1min.value.trim();
+      var v = raw === '' ? null : Number(raw);
+      TM6M.state.current.recuperacion.fcAlMinuto = v;
+      fc1min.classList.toggle('out-of-range', v !== null && (v < TM6M.calc.LIMITES.fcMin || v > TM6M.calc.LIMITES.fcMax));
     });
     TM6M.ui.attachTaFormatter(el('r-ta-final'), function (v) {
       TM6M.state.current.taFinal = v;

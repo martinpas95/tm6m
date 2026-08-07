@@ -191,6 +191,16 @@ textarea:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 4px var(--color-primary-light);
 }
+/* Valor cargado fuera del rango fisiológico plausible (ej. SpO2 150%, TA 1200/80).
+   No bloquea nada, solo llama la atención antes de generar el informe. */
+input.out-of-range {
+  border-color: var(--color-warning);
+  background: var(--color-warning-light);
+}
+input.out-of-range:focus {
+  border-color: var(--color-warning);
+  box-shadow: 0 0 0 4px var(--color-warning-light);
+}
 input::placeholder, textarea::placeholder { color: #9aa8aa; }
 .field-row { display: flex; gap: 0.7rem; }
 .field-row > label { flex: 1; }

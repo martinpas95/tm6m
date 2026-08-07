@@ -120,10 +120,10 @@ TM6M.review = (function () {
         row.appendChild(title);
         var box = document.createElement('div');
         box.appendChild(TM6M.ui.fieldBlock('SpO2 %', function (b) {
-          TM6M.ui.buildNumberInput(b, p.spo2 === undefined ? null : p.spo2, function (v) { p.spo2 = v; }, { placeholder: '%' });
+          TM6M.ui.buildNumberInput(b, p.spo2 === undefined ? null : p.spo2, function (v) { p.spo2 = v; }, { placeholder: '%', min: TM6M.calc.LIMITES.spo2Min, max: TM6M.calc.LIMITES.spo2Max });
         }));
         box.appendChild(TM6M.ui.fieldBlock('FC (lpm)', function (b) {
-          TM6M.ui.buildNumberInput(b, p.fc === undefined ? null : p.fc, function (v) { p.fc = v; });
+          TM6M.ui.buildNumberInput(b, p.fc === undefined ? null : p.fc, function (v) { p.fc = v; }, { min: TM6M.calc.LIMITES.fcMin, max: TM6M.calc.LIMITES.fcMax });
         }));
         box.appendChild(TM6M.ui.fieldBlock('Borg disnea', function (b) {
           TM6M.ui.buildBorgSelector(b, p.borgDisnea, function (v) { p.borgDisnea = v; });
@@ -146,10 +146,10 @@ TM6M.review = (function () {
       c.appendChild(title);
       var box = document.createElement('div');
       box.appendChild(TM6M.ui.fieldBlock('SpO2 %', function (b) {
-        TM6M.ui.buildNumberInput(b, d.spo2, function (v) { d.spo2 = v; }, { placeholder: '%' });
+        TM6M.ui.buildNumberInput(b, d.spo2, function (v) { d.spo2 = v; }, { placeholder: '%', min: TM6M.calc.LIMITES.spo2Min, max: TM6M.calc.LIMITES.spo2Max });
       }));
       box.appendChild(TM6M.ui.fieldBlock('FC (lpm)', function (b) {
-        TM6M.ui.buildNumberInput(b, d.fc, function (v) { d.fc = v; });
+        TM6M.ui.buildNumberInput(b, d.fc, function (v) { d.fc = v; }, { min: TM6M.calc.LIMITES.fcMin, max: TM6M.calc.LIMITES.fcMax });
       }));
       box.appendChild(TM6M.ui.fieldBlock('Borg disnea', function (b) {
         TM6M.ui.buildBorgSelector(b, d.borgDisnea, function (v) { d.borgDisnea = v; });
@@ -208,7 +208,7 @@ TM6M.review = (function () {
       var grid = document.createElement('div');
       grid.className = 'field-grid';
       grid.appendChild(gridField('FC al minuto de finalizar', function (box) {
-        TM6M.ui.buildNumberInput(box, t.recuperacion.fcAlMinuto, function (v) { t.recuperacion.fcAlMinuto = v; });
+        TM6M.ui.buildNumberInput(box, t.recuperacion.fcAlMinuto, function (v) { t.recuperacion.fcAlMinuto = v; }, { min: TM6M.calc.LIMITES.fcMin, max: TM6M.calc.LIMITES.fcMax });
       }));
       grid.appendChild(gridField('Recupera FC en (min)', function (box) {
         TM6M.ui.buildNumberInput(box, t.recuperacion.recuperaFcEnMin, function (v) { t.recuperacion.recuperaFcEnMin = v; }, { decimal: true, step: '0.1' });

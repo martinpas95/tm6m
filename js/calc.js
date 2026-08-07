@@ -6,12 +6,15 @@ TM6M.calc = (function () {
   function numOrZero(v) { return isNum(v) ? v : 0; }
 
   // Enright & Sherrill, AJRCCM 1998;158:1384-87
+  // En combinaciones extremas (pero válidas según LIMITES) de edad/peso/talla la fórmula
+  // puede dar un resultado negativo, que no tiene sentido físico — se trata como "no
+  // calculable" (igual que si faltara un dato), en vez de mostrarlo tal cual.
   function metrosPredichos(sexo, tallaCm, edad, pesoKg) {
     if (!isNum(tallaCm) || !isNum(edad) || !isNum(pesoKg)) return null;
-    if (sexo === 'M') {
-      return 7.57 * tallaCm - 5.02 * edad - 1.76 * pesoKg - 309;
-    }
-    return 2.11 * tallaCm - 2.29 * pesoKg - 5.78 * edad + 667;
+    var val = sexo === 'M'
+      ? 7.57 * tallaCm - 5.02 * edad - 1.76 * pesoKg - 309
+      : 2.11 * tallaCm - 2.29 * pesoKg - 5.78 * edad + 667;
+    return val > 0 ? val : null;
   }
 
   function bmi(pesoKg, tallaCm) {
@@ -24,8 +27,12 @@ TM6M.calc = (function () {
     return filas.reduce(function (sum, f) { return sum + numOrZero(f.metros); }, 0);
   }
 
-  function fcMaxima(filas) {
-    var vals = filas.map(function (f) { return f.fc; }).filter(isNum);
+  // Junta la FC de basal+6min con la de paradas y finalización anticipada — el pico
+  // de FC muchas veces se da justo en esos momentos, no en una carga de minuto fijo.
+  function fcMaxima(t) {
+    var vals = t.filas.map(function (f) { return f.fc; }).filter(isNum);
+    if (t.paradas) t.paradas.forEach(function (p) { if (isNum(p.fc)) vals.push(p.fc); });
+    if (t.terminoAnticipado && isNum(t.terminoAnticipado.fc)) vals.push(t.terminoAnticipado.fc);
     if (!vals.length) return null;
     return Math.max.apply(null, vals);
   }
@@ -76,42 +83,69 @@ TM6M.calc = (function () {
   }
 
   // "120/80" -> {sys:120, dia:80}
+  // Anclado a todo el string (^...$) para no matchear un pedazo de un valor con typo
+  // (ej. "1200/80" ya NO se lee como "200/80").
   function parseTa(str) {
     if (!str) return null;
-    var m = String(str).match(/(\d{2,3})\s*\/\s*(\d{2,3})/);
+    var m = String(str).trim().match(/^(\d{2,3})\s*\/\s*(\d{2,3})$/);
     if (!m) return null;
     return { sys: Number(m[1]), dia: Number(m[2]) };
   }
 
+  function isTaPlausible(ta) {
+    return !!ta &&
+      ta.sys >= LIMITES.taSisMin && ta.sys <= LIMITES.taSisMax &&
+      ta.dia >= LIMITES.taDiaMin && ta.dia <= LIMITES.taDiaMax;
+  }
+
   // Respuesta tensional al ejercicio: adecuada (PAS sube >=10 mmHg), hipotensiva
   // (PAS final - PAS basal <= -10 mmHg) o aplanada (todo lo que queda en el medio).
+  // Si algún valor está fuera de rango fisiológico plausible (probable error de carga),
+  // no se calcula nada en vez de arriesgar una conclusión con un dato malo.
   function classifyTaResponse(taInicial, taFinal) {
     var ini = parseTa(taInicial);
     var fin = parseTa(taFinal);
-    if (!ini || !fin) return null;
+    if (!ini || !fin || !isTaPlausible(ini) || !isTaPlausible(fin)) return null;
     var deltaSys = fin.sys - ini.sys;
     if (deltaSys <= -10) return 'hipotensiva';
     return deltaSys < 10 ? 'aplanada' : 'adecuada';
   }
 
-  // Desaturación significativa: diferencia >= 4 puntos de SpO2 entre cualquier par de
-  // valores registrados en toda la prueba, incluyendo el basal (no solo basal vs. mínimo).
+  // Desaturación significativa (criterio ATS/ERS del 6MWT): caída de SpO2 de al menos
+  // 4 puntos respecto del basal Y que el valor alcanzado sea menor a 90%. No alcanza
+  // con que el rango de valores registrados varíe ≥4 puntos en cualquier sentido (ej.
+  // subir de 94% a 99% por ansiedad al arrancar no es una desaturación).
+  // "Saturación mínima" del informe sigue siendo el mínimo de TODA la prueba (incluido
+  // el basal), independiente de este criterio — es solo un dato informativo aparte.
   function checkDesaturacion(t) {
-    var vals = t.filas.map(function (f) { return f.spo2; }).filter(isNum);
+    var basal = t.filas[0].spo2;
+    var exerciseVals = t.filas.slice(1).map(function (f) { return f.spo2; }).filter(isNum);
     if (t.paradas) {
-      t.paradas.forEach(function (p) { if (isNum(p.spo2)) vals.push(p.spo2); });
+      t.paradas.forEach(function (p) { if (isNum(p.spo2)) exerciseVals.push(p.spo2); });
     }
-    if (t.terminoAnticipado && isNum(t.terminoAnticipado.spo2)) vals.push(t.terminoAnticipado.spo2);
-    if (!vals.length) return null;
-    var max = Math.max.apply(null, vals);
-    var min = Math.min.apply(null, vals);
-    return { significativa: (max - min) >= 4, diff: max - min, max: max, min: min };
+    if (t.terminoAnticipado && isNum(t.terminoAnticipado.spo2)) exerciseVals.push(t.terminoAnticipado.spo2);
+
+    var allVals = isNum(basal) ? [basal].concat(exerciseVals) : exerciseVals;
+    if (!allVals.length) return null;
+    var max = Math.max.apply(null, allVals);
+    var min = Math.min.apply(null, allVals);
+
+    var significativa = false;
+    if (isNum(basal) && exerciseVals.length) {
+      var minEjercicio = Math.min.apply(null, exerciseVals);
+      significativa = (basal - minEjercicio) >= 4 && minEjercicio < 90;
+    }
+    return { significativa: significativa, diff: max - min, max: max, min: min };
   }
 
   var LIMITES = {
     edadMin: 1, edadMax: 120,
     pesoMin: 20, pesoMax: 300,
-    tallaMin: 100, tallaMax: 250
+    tallaMin: 100, tallaMax: 250,
+    spo2Min: 0, spo2Max: 100,
+    fcMin: 20, fcMax: 250,
+    taSisMin: 60, taSisMax: 260,
+    taDiaMin: 30, taDiaMax: 150
   };
 
   function validatePatientBasics(t) {
@@ -173,7 +207,7 @@ TM6M.calc = (function () {
   function computeReport(t) {
     var metrosTot = metrosTotales(t.filas);
     var metrosPred = metrosPredichos(t.sexo, Number(t.talla), Number(t.edad), Number(t.peso));
-    var fcMax = fcMaxima(t.filas);
+    var fcMax = fcMaxima(t);
     var pctFc = pctFcPredicha(fcMax, Number(t.edad));
     var pctMetros = pctMetrosPredicho(metrosTot, metrosPred);
     var bmiVal = bmi(Number(t.peso), Number(t.talla));
@@ -223,6 +257,7 @@ TM6M.calc = (function () {
     buildParadaLines: buildParadaLines,
     buildTerminoAnticipadoLine: buildTerminoAnticipadoLine,
     parseTa: parseTa,
+    isTaPlausible: isTaPlausible,
     classifyTaResponse: classifyTaResponse,
     buildTaRespLine: buildTaRespLine,
     validatePatientBasics: validatePatientBasics,

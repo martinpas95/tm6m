@@ -9,26 +9,26 @@
 // real, hay que bumpear el mismo N en TRES lugares a la vez: CACHE_NAME acá abajo, la lista
 // CORE_FILES (para que coincida exactamente con las URLs que pide index.html) y los "?v=N"
 // de los <script>/<link> en index.html.
-var CACHE_NAME = 'tm6m-v13';
+var CACHE_NAME = 'tm6m-v14';
 var CORE_FILES = [
   './',
   './index.html',
   './manifest.json',
-  './css/styles.css?v=13',
-  './js/storage.js?v=13',
-  './js/calc.js?v=13',
-  './js/ui.js?v=13',
-  './js/logo.js?v=13',
-  './js/pdf.js?v=13',
-  './js/google.js?v=13',
-  './js/home.js?v=13',
-  './js/patient.js?v=13',
-  './js/test.js?v=13',
-  './js/recovery.js?v=13',
-  './js/review.js?v=13',
-  './js/report.js?v=13',
-  './js/settings.js?v=13',
-  './js/main.js?v=13',
+  './css/styles.css?v=14',
+  './js/storage.js?v=14',
+  './js/calc.js?v=14',
+  './js/ui.js?v=14',
+  './js/logo.js?v=14',
+  './js/pdf.js?v=14',
+  './js/google.js?v=14',
+  './js/home.js?v=14',
+  './js/patient.js?v=14',
+  './js/test.js?v=14',
+  './js/recovery.js?v=14',
+  './js/review.js?v=14',
+  './js/report.js?v=14',
+  './js/settings.js?v=14',
+  './js/main.js?v=14',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './assets/logo-sanatorio.jpg'

@@ -219,10 +219,10 @@ TM6M.test = (function () {
       hint.textContent = 'Se detuvo en el minuto ' + TM6M.calc.fmtMinSec(actual.inicioSec) + '. Cargá cómo estaba en ese momento:';
       box.appendChild(hint);
       box.appendChild(TM6M.ui.fieldBlock('SpO2 %', function (b) {
-        TM6M.ui.buildNumberInput(b, actual.spo2, function (v) { actual.spo2 = v; }, { placeholder: '%' });
+        TM6M.ui.buildNumberInput(b, actual.spo2, function (v) { actual.spo2 = v; }, { placeholder: '%', min: TM6M.calc.LIMITES.spo2Min, max: TM6M.calc.LIMITES.spo2Max });
       }));
       box.appendChild(TM6M.ui.fieldBlock('FC (lpm)', function (b) {
-        TM6M.ui.buildNumberInput(b, actual.fc, function (v) { actual.fc = v; });
+        TM6M.ui.buildNumberInput(b, actual.fc, function (v) { actual.fc = v; }, { min: TM6M.calc.LIMITES.fcMin, max: TM6M.calc.LIMITES.fcMax });
       }));
       box.appendChild(TM6M.ui.fieldBlock('Borg disnea', function (b) {
         TM6M.ui.buildBorgSelector(b, actual.borgDisnea, function (v) { actual.borgDisnea = v; });
@@ -268,10 +268,10 @@ TM6M.test = (function () {
     hint.textContent = 'Se termina antes de tiempo en el minuto ' + TM6M.calc.fmtMinSec(d.sec) + '. Cargá cómo estaba en ese momento:';
     box.appendChild(hint);
     box.appendChild(TM6M.ui.fieldBlock('SpO2 %', function (b) {
-      TM6M.ui.buildNumberInput(b, d.spo2, function (v) { d.spo2 = v; }, { placeholder: '%' });
+      TM6M.ui.buildNumberInput(b, d.spo2, function (v) { d.spo2 = v; }, { placeholder: '%', min: TM6M.calc.LIMITES.spo2Min, max: TM6M.calc.LIMITES.spo2Max });
     }));
     box.appendChild(TM6M.ui.fieldBlock('FC (lpm)', function (b) {
-      TM6M.ui.buildNumberInput(b, d.fc, function (v) { d.fc = v; });
+      TM6M.ui.buildNumberInput(b, d.fc, function (v) { d.fc = v; }, { min: TM6M.calc.LIMITES.fcMin, max: TM6M.calc.LIMITES.fcMax });
     }));
     box.appendChild(TM6M.ui.fieldBlock('Borg disnea', function (b) {
       TM6M.ui.buildBorgSelector(b, d.borgDisnea, function (v) { d.borgDisnea = v; });

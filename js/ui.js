@@ -146,18 +146,29 @@ TM6M.ui = (function () {
     }
   }
 
+  // opts.min/opts.max: rango fisiológico plausible (ej. SpO2 0-100, FC 20-250). No
+  // bloquea la carga — solo marca visualmente el campo como fuera de rango para que
+  // se note de un vistazo antes de generar el informe.
   function buildNumberInput(container, value, onChange, opts) {
     opts = opts || {};
     var input = document.createElement('input');
     input.type = 'number';
     input.inputMode = opts.decimal ? 'decimal' : 'numeric';
     if (opts.step) input.step = opts.step;
+    if (opts.min !== undefined) input.min = opts.min;
+    if (opts.max !== undefined) input.max = opts.max;
     input.value = (value === null || value === undefined) ? '' : value;
     input.placeholder = opts.placeholder || '';
+    function markRange(v) {
+      var fuera = v !== null && ((opts.min !== undefined && v < opts.min) || (opts.max !== undefined && v > opts.max));
+      input.classList.toggle('out-of-range', fuera);
+    }
+    markRange(value === null || value === undefined ? null : value);
     input.addEventListener('input', function () {
       var raw = input.value.trim();
       var v = raw === '' ? null : Number(raw);
       if (typeof v === 'number' && isNaN(v)) v = null;
+      markRange(v);
       onChange(v);
     });
     container.appendChild(input);
@@ -176,14 +187,21 @@ TM6M.ui = (function () {
     return digits.slice(0, sysLen) + '/' + digits.slice(sysLen);
   }
 
+  function markTaRange(input, formatted) {
+    var ta = TM6M.calc.parseTa(formatted);
+    input.classList.toggle('out-of-range', !!ta && !TM6M.calc.isTaPlausible(ta));
+  }
+
   function attachTaFormatter(input, onChange) {
     input.inputMode = 'numeric';
     if (!input.placeholder) input.placeholder = '120/80';
+    markTaRange(input, input.value);
     input.addEventListener('input', function (e) {
       var deleting = !!(e.inputType && e.inputType.indexOf('delete') === 0);
       var digits = input.value.replace(/\D/g, '');
       var formatted = formatTaDigits(digits, deleting);
       input.value = formatted;
+      markTaRange(input, formatted);
       onChange(formatted);
     });
     return input;
@@ -205,13 +223,13 @@ TM6M.ui = (function () {
       TM6M.ui.buildNumberInput(box, fila.spo2, function (v) {
         fila.spo2 = v;
         if (opts.onManualSpo2) opts.onManualSpo2();
-      }, { placeholder: '%' });
+      }, { placeholder: '%', min: TM6M.calc.LIMITES.spo2Min, max: TM6M.calc.LIMITES.spo2Max });
     }));
     container.appendChild(fieldBlock('FC (lpm)', function (box) {
       TM6M.ui.buildNumberInput(box, fila.fc, function (v) {
         fila.fc = v;
         if (opts.onManualFc) opts.onManualFc();
-      });
+      }, { min: TM6M.calc.LIMITES.fcMin, max: TM6M.calc.LIMITES.fcMax });
     }));
     if (opts.showMetros !== false) {
       container.appendChild(fieldBlock('Metros', function (box) {
