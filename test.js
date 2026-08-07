@@ -5,6 +5,7 @@ TM6M.test = (function () {
 
   var startedAt = null;
   var timerInterval = null;
+  var autosaveInterval = null;
   var notifiedBoundary = {};
   var openRow = null;
   var manualMetros = {};
@@ -12,6 +13,14 @@ TM6M.test = (function () {
   var pendingEarlyFinish = null;
 
   function getElapsedMs() { return Date.now() - startedAt; }
+
+  // Guardado provisorio cada 2 minutos mientras dura la caminata, para no perder
+  // todo lo cargado si se cierra la app antes de llegar al guardado definitivo del
+  // informe. Es solo un upsert en localStorage (rápido, no toca la UI), y el test
+  // queda como "no finalizado" hasta que se guarde/envíe el informe de verdad.
+  function autosave() {
+    TM6M.storage.upsertTest(TM6M.state.current);
+  }
 
   function start() {
     var t = TM6M.state.current;
@@ -30,6 +39,8 @@ TM6M.test = (function () {
 
     clearInterval(timerInterval);
     timerInterval = setInterval(tick, 250);
+    clearInterval(autosaveInterval);
+    autosaveInterval = setInterval(autosave, 120000);
 
     TM6M.ui.setLeaveGuard('test', function () {
       return confirm('¿Salir de la prueba en curso? El cronómetro se detendrá.');
@@ -79,22 +90,34 @@ TM6M.test = (function () {
 
   function updateMetersUI() {
     var t = TM6M.state.current;
-    el('lap-count').textContent = t.vueltas.length;
+    // +1 porque la primera vuelta ya se acredita sola al arrancar (ver recomputeMetros).
+    el('lap-count').textContent = t.vueltas.length + 1;
     el('test-meters-total').textContent = TM6M.calc.metrosTotales(t.filas);
   }
 
   // --- Flechas de sentido de marcha ---
-  // La flecha ↑ automática (sin haber tocado "Vuelta") existe UNA sola vez, al
-  // arrancar la prueba entera (minuto 1). De ahí en más, en cualquier minuto —
-  // incluso al cambiar de minuto — es 100% manual: el recuadro arranca vacío y
-  // solo se llena con toques reales de "Vuelta".
+  // La alternancia (↑ inicial, después ↓/↑/↓...) es continua a lo largo de TODA la
+  // prueba, sin importar el minuto: cada toque real de "Vuelta" es lo opuesto del
+  // toque anterior (o del ↑ inicial si es el primero). El recuadro en pantalla y lo
+  // que queda junto a cada "Minuto X" solo muestran el tramo de esa alternancia que
+  // corresponde a ese minuto, pero la secuencia en sí nunca se reinicia.
 
-  function arrowSequence(count, seeded) {
-    var seq = seeded ? ['up'] : [];
-    for (var k = 1; k <= count; k++) {
-      var isFirstOfPair = seeded ? (k % 2 === 1) : (k % 2 === 0);
-      seq.push(isFirstOfPair ? 'down' : 'up');
-    }
+  // Una entrada por cada vuelta real, en orden cronológico: {minuto, dir}.
+  function globalArrowTaps() {
+    var t = TM6M.state.current;
+    return t.vueltas.map(function (sec, idx) {
+      return {
+        minute: Math.min(6, Math.floor(sec / 60) + 1),
+        dir: idx % 2 === 0 ? 'down' : 'up'
+      };
+    });
+  }
+
+  function arrowsForMinute(globalTaps, minuteIndex) {
+    var seq = (minuteIndex === 1) ? ['up'] : [];
+    globalTaps.forEach(function (tap) {
+      if (tap.minute === minuteIndex) seq.push(tap.dir);
+    });
     return seq;
   }
 
@@ -112,9 +135,7 @@ TM6M.test = (function () {
   function updateDirectionBox() {
     var box = el('test-direction-box');
     if (!box) return;
-    var counts = lapCountsByMinute();
-    var curMinute = currentMinuteIndex();
-    var seq = arrowSequence(counts[curMinute] || 0, curMinute === 1);
+    var seq = arrowsForMinute(globalArrowTaps(), currentMinuteIndex());
     box.innerHTML = arrowGlyphsHtml(seq);
   }
 
@@ -151,6 +172,8 @@ TM6M.test = (function () {
 
   function finishWalk() {
     clearInterval(timerInterval);
+    clearInterval(autosaveInterval);
+    autosave();
     TM6M.ui.setLeaveGuard('test', null);
     TM6M.ui.toast('Caminata finalizada, iniciando recuperación');
     // La recuperación arranca en el instante real en que se cumplieron los 6:00 de
@@ -291,7 +314,7 @@ TM6M.test = (function () {
     var container = el('test-rows');
     container.innerHTML = '';
     var sec = Math.floor(getElapsedMs() / 1000);
-    var counts = lapCountsByMinute();
+    var globalTaps = globalArrowTaps();
 
     for (var i = 1; i <= 6; i++) {
       (function (i) {
@@ -310,7 +333,7 @@ TM6M.test = (function () {
         });
         row.appendChild(head);
 
-        var seqForRow = arrowSequence(counts[i], i === 1);
+        var seqForRow = arrowsForMinute(globalTaps, i);
         if (seqForRow.length) {
           var arrowsRow = document.createElement('div');
           arrowsRow.className = 'minute-row-arrows';
