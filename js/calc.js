@@ -111,13 +111,18 @@ TM6M.calc = (function () {
     return deltaSys < 10 ? 'aplanada' : 'adecuada';
   }
 
-  // Desaturación significativa: en algún momento de la prueba el SpO2 cae 4 puntos o
-  // más respecto de CUALQUIER punto anterior (sea el basal u otro minuto ya pasado),
-  // nunca al revés — una suba (ej. 94%→99% por ansiedad al arrancar) no cuenta. Se arma
-  // la secuencia cronológica real (basal, minuto a minuto, y paradas/finalización
-  // anticipada en su instante exacto) y se compara cada valor contra el máximo visto
-  // hasta ese momento, así también agarra una caída progresiva a lo largo de varios
-  // minutos aunque ningún salto puntual entre dos lecturas consecutivas llegue a 4.
+  // Desaturación significativa: se marca si se cumple CUALQUIERA de estos dos
+  // disparadores independientes (no hace falta que se den los dos juntos):
+  //  1) En algún momento de la prueba el SpO2 cae 4 puntos o más respecto de
+  //     CUALQUIER punto anterior (sea el basal u otro minuto ya pasado) — nunca al
+  //     revés, una suba (ej. 94%→99% por ansiedad al arrancar) no cuenta. Se arma la
+  //     secuencia cronológica real (basal, minuto a minuto, y paradas/finalización
+  //     anticipada en su instante exacto) y se compara cada valor contra el máximo
+  //     visto hasta ese momento, así también agarra una caída progresiva a lo largo
+  //     de varios minutos aunque ningún salto puntual entre dos lecturas llegue a 4.
+  //  2) En algún momento de la prueba el SpO2 llega a 88% o menos, aunque la caída
+  //     puntual desde el pico anterior no llegue a 4 (umbral de la guía ATS de
+  //     oxigenoterapia domiciliaria 2020).
   // "Saturación mínima" del informe sigue siendo el mínimo de toda la prueba,
   // independiente de este criterio — es solo un dato informativo aparte.
   function checkDesaturacion(t) {
@@ -147,6 +152,7 @@ TM6M.calc = (function () {
       if (maxSoFar - points[k].spo2 >= 4) { significativa = true; break; }
       if (points[k].spo2 > maxSoFar) maxSoFar = points[k].spo2;
     }
+    if (!significativa && min <= 88) significativa = true;
     return { significativa: significativa, diff: max - min, max: max, min: min };
   }
 
