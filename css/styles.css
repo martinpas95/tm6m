@@ -204,6 +204,12 @@ input::placeholder, textarea::placeholder { color: #9aa8aa; }
   color: var(--color-text-mute);
   margin: 0 0 0.5rem;
 }
+.basal-hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--color-primary);
+}
 
 /* Segmented control (Sexo, etc.) */
 .segmented {
