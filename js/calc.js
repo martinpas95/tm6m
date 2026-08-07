@@ -111,29 +111,41 @@ TM6M.calc = (function () {
     return deltaSys < 10 ? 'aplanada' : 'adecuada';
   }
 
-  // Desaturación significativa (criterio ATS/ERS del 6MWT): caída de SpO2 de al menos
-  // 4 puntos respecto del basal Y que el valor alcanzado sea menor a 90%. No alcanza
-  // con que el rango de valores registrados varíe ≥4 puntos en cualquier sentido (ej.
-  // subir de 94% a 99% por ansiedad al arrancar no es una desaturación).
-  // "Saturación mínima" del informe sigue siendo el mínimo de TODA la prueba (incluido
-  // el basal), independiente de este criterio — es solo un dato informativo aparte.
+  // Desaturación significativa: en algún momento de la prueba el SpO2 cae 4 puntos o
+  // más respecto de CUALQUIER punto anterior (sea el basal u otro minuto ya pasado),
+  // nunca al revés — una suba (ej. 94%→99% por ansiedad al arrancar) no cuenta. Se arma
+  // la secuencia cronológica real (basal, minuto a minuto, y paradas/finalización
+  // anticipada en su instante exacto) y se compara cada valor contra el máximo visto
+  // hasta ese momento, así también agarra una caída progresiva a lo largo de varios
+  // minutos aunque ningún salto puntual entre dos lecturas consecutivas llegue a 4.
+  // "Saturación mínima" del informe sigue siendo el mínimo de toda la prueba,
+  // independiente de este criterio — es solo un dato informativo aparte.
   function checkDesaturacion(t) {
-    var basal = t.filas[0].spo2;
-    var exerciseVals = t.filas.slice(1).map(function (f) { return f.spo2; }).filter(isNum);
-    if (t.paradas) {
-      t.paradas.forEach(function (p) { if (isNum(p.spo2)) exerciseVals.push(p.spo2); });
+    var points = [];
+    if (isNum(t.filas[0].spo2)) points.push({ sec: 0, spo2: t.filas[0].spo2 });
+    for (var i = 1; i <= 6; i++) {
+      if (isNum(t.filas[i].spo2)) points.push({ sec: i * 60, spo2: t.filas[i].spo2 });
     }
-    if (t.terminoAnticipado && isNum(t.terminoAnticipado.spo2)) exerciseVals.push(t.terminoAnticipado.spo2);
+    if (t.paradas) {
+      t.paradas.forEach(function (p) {
+        if (isNum(p.spo2) && isNum(p.inicioSec)) points.push({ sec: p.inicioSec, spo2: p.spo2 });
+      });
+    }
+    if (t.terminoAnticipado && isNum(t.terminoAnticipado.spo2) && isNum(t.terminoAnticipado.sec)) {
+      points.push({ sec: t.terminoAnticipado.sec, spo2: t.terminoAnticipado.spo2 });
+    }
+    if (!points.length) return null;
+    points.sort(function (a, b) { return a.sec - b.sec; });
 
-    var allVals = isNum(basal) ? [basal].concat(exerciseVals) : exerciseVals;
-    if (!allVals.length) return null;
-    var max = Math.max.apply(null, allVals);
-    var min = Math.min.apply(null, allVals);
+    var vals = points.map(function (p) { return p.spo2; });
+    var max = Math.max.apply(null, vals);
+    var min = Math.min.apply(null, vals);
 
     var significativa = false;
-    if (isNum(basal) && exerciseVals.length) {
-      var minEjercicio = Math.min.apply(null, exerciseVals);
-      significativa = (basal - minEjercicio) >= 4 && minEjercicio < 90;
+    var maxSoFar = points[0].spo2;
+    for (var k = 1; k < points.length; k++) {
+      if (maxSoFar - points[k].spo2 >= 4) { significativa = true; break; }
+      if (points[k].spo2 > maxSoFar) maxSoFar = points[k].spo2;
     }
     return { significativa: significativa, diff: max - min, max: max, min: min };
   }

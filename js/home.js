@@ -62,7 +62,10 @@ TM6M.home = (function () {
 
       li.appendChild(info);
       li.appendChild(actions);
-      li.addEventListener('click', function () { openForView(t); });
+      // Un test "sin terminar" (guardado provisorio de la caminata, o interrumpido antes
+      // de generar el informe) no tiene sentido abrirlo como informe de solo lectura con
+      // datos incompletos — se abre directo en edición para poder completarlo.
+      li.addEventListener('click', function () { t.finalizado ? openForView(t) : openForEdit(t); });
       list.appendChild(li);
     });
   }
